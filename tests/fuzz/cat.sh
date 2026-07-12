@@ -3,7 +3,7 @@
 # stdout must match the reference cat byte-for-byte (the strongest invariant)
 # and the exit code must agree.
 set -u
-BIN=${UOLT_CAT:-./build/uolt-cat}
+BIN=${UOLT_CAT:-${BUILD:-./build}/uolt-cat}
 case "$BIN" in /*) ;; *) BIN="$PWD/${BIN#./}";; esac
 REF=/bin/cat; [ -x /usr/bin/cat ] && REF=/usr/bin/cat
 ITER=${UOLT_FUZZ_ITER:-200}

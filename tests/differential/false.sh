@@ -2,7 +2,7 @@
 # Differential test: uolt-false matches a reference `false` on exit code and
 # output, byte for byte, across cases.
 set -u
-BIN=${UOLT_FALSE:-./build/uolt-false}
+BIN=${UOLT_FALSE:-${BUILD:-./build}/uolt-false}
 REF=${REF_FALSE:-$(command -v false)}
 [ -x /usr/bin/false ] && REF=/usr/bin/false
 tmp=$(mktemp -d)

@@ -1,7 +1,7 @@
 #!/bin/sh
 # Unit test for uolt-true: exit 0, no stdout, no stderr (FR-001, FR-002, FR-003).
 set -u
-BIN=${UOLT_TRUE:-./build/uolt-true}
+BIN=${UOLT_TRUE:-${BUILD:-./build}/uolt-true}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 

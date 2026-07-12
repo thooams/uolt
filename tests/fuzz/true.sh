@@ -2,7 +2,7 @@
 # Fuzz test (Principle XI): random/large/binary argv and random stream states must
 # never yield a non-zero exit, never produce output, and never crash.
 set -u
-BIN=${UOLT_TRUE:-./build/uolt-true}
+BIN=${UOLT_TRUE:-${BUILD:-./build}/uolt-true}
 ITER=${UOLT_FUZZ_ITER:-500}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

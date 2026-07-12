@@ -2,7 +2,7 @@
 # Differential test (SC-003, FR-007): uolt-true matches a reference `true` on
 # exit code and output, byte for byte, across cases.
 set -u
-BIN=${UOLT_TRUE:-./build/uolt-true}
+BIN=${UOLT_TRUE:-${BUILD:-./build}/uolt-true}
 REF=${REF_TRUE:-$(command -v true)}
 # Prefer a real executable over the shell builtin for an honest comparison.
 [ -x /usr/bin/true ] && REF=/usr/bin/true

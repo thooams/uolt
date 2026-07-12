@@ -1,7 +1,7 @@
 #!/bin/sh
 # Repeatability test (US2, FR-006): 1000 invocations + a loop condition all exit 0, no output.
 set -u
-BIN=${UOLT_TRUE:-./build/uolt-true}
+BIN=${UOLT_TRUE:-${BUILD:-./build}/uolt-true}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 

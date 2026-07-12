@@ -1,5 +1,6 @@
-# Build output
+# Build output (per-OS: ./build is the host default, build-linux is the container)
 build/
+build-linux/
 
 # Object files / assembled artifacts
 *.o

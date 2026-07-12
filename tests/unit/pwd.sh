@@ -6,7 +6,7 @@
 # cwd string may differ in case from the true on-disk name, which uolt-pwd
 # reports faithfully. A canonical temp dir avoids that ambiguity.
 set -u
-BIN=${UOLT_PWD:-./build/uolt-pwd}
+BIN=${UOLT_PWD:-${BUILD:-./build}/uolt-pwd}
 case "$BIN" in /*) ;; *) BIN="$PWD/${BIN#./}";; esac
 REF=/bin/pwd; [ -x /usr/bin/pwd ] && REF=/usr/bin/pwd
 tmp=$(mktemp -d)

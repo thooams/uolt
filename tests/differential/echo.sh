@@ -3,7 +3,7 @@
 # code and output, byte for byte. Cases avoid backslashes so GNU and BSD echo
 # agree (neither processes escapes without -e).
 set -u
-BIN=${UOLT_ECHO:-./build/uolt-echo}
+BIN=${UOLT_ECHO:-${BUILD:-./build}/uolt-echo}
 REF=${REF_ECHO:-/bin/echo}
 [ -x "$REF" ] || REF=$(command -v echo)
 tmp=$(mktemp -d)

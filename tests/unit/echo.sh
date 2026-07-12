@@ -1,7 +1,7 @@
 #!/bin/sh
 # Unit test for uolt-echo: basic output shape and exit status.
 set -u
-BIN=${UOLT_ECHO:-./build/uolt-echo}
+BIN=${UOLT_ECHO:-${BUILD:-./build}/uolt-echo}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fail=0

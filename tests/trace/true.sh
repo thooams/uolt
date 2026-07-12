@@ -4,7 +4,7 @@
 # elevated privileges, so it is best-effort: it fails on a real violation but
 # SKIPs (exit 0) when tracing is unavailable.
 set -u
-BIN=${UOLT_TRUE:-./build/uolt-true}
+BIN=${UOLT_TRUE:-${BUILD:-./build}/uolt-true}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 

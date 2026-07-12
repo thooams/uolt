@@ -3,7 +3,7 @@
 # real violation, SKIPs when tracing is unavailable. Linux resolves the cwd with
 # the getcwd syscall; macOS with open/fcntl/close - neither allocates.
 set -u
-BIN=${UOLT_PWD:-./build/uolt-pwd}
+BIN=${UOLT_PWD:-${BUILD:-./build}/uolt-pwd}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 

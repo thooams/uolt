@@ -2,7 +2,7 @@
 # Unit test for uolt-cat: copies files and stdin verbatim to stdout, exit 0;
 # a missing file sets a nonzero exit but does not stop the other operands.
 set -u
-BIN=${UOLT_CAT:-./build/uolt-cat}
+BIN=${UOLT_CAT:-${BUILD:-./build}/uolt-cat}
 case "$BIN" in /*) ;; *) BIN="$PWD/${BIN#./}";; esac
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

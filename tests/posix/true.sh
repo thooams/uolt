@@ -1,7 +1,7 @@
 #!/bin/sh
 # POSIX conformance (FR-004, FR-005): arguments ignored; behavior independent of stream state.
 set -u
-BIN=${UOLT_TRUE:-./build/uolt-true}
+BIN=${UOLT_TRUE:-${BUILD:-./build}/uolt-true}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fail=0

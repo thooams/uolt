@@ -2,7 +2,7 @@
 # POSIX conformance for uolt-false: arguments ignored; always exit 1; no output;
 # behavior independent of stream state.
 set -u
-BIN=${UOLT_FALSE:-./build/uolt-false}
+BIN=${UOLT_FALSE:-${BUILD:-./build}/uolt-false}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fail=0

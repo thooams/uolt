@@ -2,7 +2,7 @@
 # POSIX behavior for uolt-cat: verbatim copy, stdin when no operand or "-",
 # operand order preserved, -u accepted as a no-op, nonzero exit on unreadable.
 set -u
-BIN=${UOLT_CAT:-./build/uolt-cat}
+BIN=${UOLT_CAT:-${BUILD:-./build}/uolt-cat}
 case "$BIN" in /*) ;; *) BIN="$PWD/${BIN#./}";; esac
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

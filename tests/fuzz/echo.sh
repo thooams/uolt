@@ -2,7 +2,7 @@
 # Fuzz test: random argv must never crash; output must match the reference echo
 # byte-for-byte (the strongest invariant), and exit status must be 0.
 set -u
-BIN=${UOLT_ECHO:-./build/uolt-echo}
+BIN=${UOLT_ECHO:-${BUILD:-./build}/uolt-echo}
 REF=${REF_ECHO:-/bin/echo}
 [ -x "$REF" ] || REF=$(command -v echo)
 ITER=${UOLT_FUZZ_ITER:-500}

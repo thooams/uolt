@@ -1,7 +1,7 @@
 #!/bin/sh
 # Unit test for uolt-false: exit 1, no stdout, no stderr.
 set -u
-BIN=${UOLT_FALSE:-./build/uolt-false}
+BIN=${UOLT_FALSE:-${BUILD:-./build}/uolt-false}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 

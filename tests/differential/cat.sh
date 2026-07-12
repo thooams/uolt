@@ -4,7 +4,7 @@
 # diagnostic wording for a failed open differs by implementation; only its exit
 # code and empty stdout matter.
 set -u
-BIN=${UOLT_CAT:-./build/uolt-cat}
+BIN=${UOLT_CAT:-${BUILD:-./build}/uolt-cat}
 case "$BIN" in /*) ;; *) BIN="$PWD/${BIN#./}";; esac
 REF=/bin/cat; [ -x /usr/bin/cat ] && REF=/usr/bin/cat
 tmp=$(mktemp -d)

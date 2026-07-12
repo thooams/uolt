@@ -2,7 +2,7 @@
 # POSIX-ish behavior for uolt-echo: -n suppresses the trailing newline; spacing
 # and exit status are correct; no escape processing (POSIX, not GNU -e).
 set -u
-BIN=${UOLT_ECHO:-./build/uolt-echo}
+BIN=${UOLT_ECHO:-${BUILD:-./build}/uolt-echo}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fail=0

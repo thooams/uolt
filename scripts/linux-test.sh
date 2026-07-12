@@ -16,14 +16,17 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
     docker build --platform linux/amd64 -t "$IMAGE" -f "$ROOT/docker/linux-toolchain.Dockerfile" "$ROOT"
 fi
 
-docker run --rm --platform linux/amd64 -v "$ROOT":/w -w /w "$IMAGE" sh -c '
+# Build into a Linux-only dir (build-linux) so the ELF binaries never overwrite
+# the host's macOS Mach-O binaries in ./build. BUILD is exported by the Makefile
+# to the test scripts, so `make test` runs against the same dir.
+docker run --rm --platform linux/amd64 -v "$ROOT":/w -w /w -e BUILD=build-linux "$IMAGE" sh -c '
     set -e
     make clean >/dev/null
     make >/dev/null
     echo "--- size (bytes) ---"
-    wc -c build/uolt-* | grep -v total
+    wc -c build-linux/uolt-* | grep -v total
     echo "--- linkage ---"
-    ldd build/uolt-true 2>/dev/null || echo "static (not a dynamic executable)"
+    ldd build-linux/uolt-true 2>/dev/null || echo "static (not a dynamic executable)"
     echo "--- tests ---"
     make test 2>&1 | grep -E "PASS|FAIL|SKIP"
 '

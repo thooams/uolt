@@ -3,7 +3,7 @@
 # never allocate (mmap/brk) or read. Best-effort like the true trace test:
 # fails on a real violation, SKIPs when tracing is unavailable.
 set -u
-BIN=${UOLT_ECHO:-./build/uolt-echo}
+BIN=${UOLT_ECHO:-${BUILD:-./build}/uolt-echo}
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 

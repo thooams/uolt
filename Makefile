@@ -13,7 +13,12 @@ UNAME_S := $(shell uname -s)
 
 AS := clang
 
-BUILD := build
+# Output directory. Overridable so the Linux container build can target a
+# separate dir (BUILD=build-linux) and never clobber the host's macOS binaries
+# in ./build - the two are different formats (Mach-O vs ELF) and a stale one is
+# unrunnable on the other OS. Exported so the test scripts pick the same dir.
+BUILD ?= build
+export BUILD
 
 # Per-OS syscall directory and link recipe (constitution Principle III is
 # platform-aware: Linux fully static; macOS carries the OS-imposed libSystem
@@ -48,11 +53,14 @@ EXTRA_pwd  := libuolt/strlen.S libuolt/write.S libuolt/getcwd.S \
 EXTRA_cat  := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
               libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
               $(SYSDIR)/open.S $(SYSDIR)/close.S
+EXTRA_head := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
+              libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
+              $(SYSDIR)/open.S $(SYSDIR)/close.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
 # EXTRA_<name> line above.
-TOOLNAMES := true false echo pwd cat
+TOOLNAMES := true false echo pwd cat head
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean
@@ -93,6 +101,11 @@ test: all
 	@sh tests/differential/cat.sh
 	@sh tests/fuzz/cat.sh
 	@sh tests/trace/cat.sh
+	@sh tests/unit/head.sh
+	@sh tests/posix/head.sh
+	@sh tests/differential/head.sh
+	@sh tests/fuzz/head.sh
+	@sh tests/trace/head.sh
 
 bench: all
 	@sh bench/run.sh

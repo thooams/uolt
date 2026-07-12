@@ -2,7 +2,7 @@
 # Differential test: uolt-pwd matches `/bin/pwd -P` (physical path) byte-for-byte
 # from several directories.
 set -u
-BIN=${UOLT_PWD:-./build/uolt-pwd}
+BIN=${UOLT_PWD:-${BUILD:-./build}/uolt-pwd}
 case "$BIN" in /*) ;; *) BIN="$PWD/${BIN#./}";; esac
 REF=/bin/pwd; [ -x /usr/bin/pwd ] && REF=/usr/bin/pwd
 tmp=$(mktemp -d)

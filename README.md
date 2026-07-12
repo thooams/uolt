@@ -21,13 +21,14 @@ syntax. Linux binaries are fully static; macOS binaries carry only the OS-impose
 
 ## Commands
 
-| Command      | Size (macOS x86_64) | Size target | Notes                                             |
-|--------------|---------------------|-------------|---------------------------------------------------|
-| `uolt-true`  | 4560 B              | < 1 KB      | POSIX `true`; ignores args, no I/O, exits 0. See note on size. |
-| `uolt-false` | 4560 B              | < 1 KB      | POSIX `false`; ignores args, no I/O, exits 1. See note on size. |
+| Command      | Size (Linux x86_64) | Size (macOS x86_64) | Target | Notes                                     |
+|--------------|---------------------|---------------------|--------|-------------------------------------------|
+| `uolt-true`  | 360 B ✅            | 4560 B              | < 1 KB | POSIX `true`; ignores args, no I/O, exits 0. |
+| `uolt-false` | 360 B ✅            | 4560 B              | < 1 KB | POSIX `false`; ignores args, no I/O, exits 1. |
 
-**Size note**: the < 1 KB targets are authoritative on **Linux** (tiny static ELF; the real
-`uolt-true` machine code is 21 bytes). **macOS** cannot produce sub-page binaries: every
-Mach-O executable carries page-aligned segments plus the `libSystem` load commands, giving an
-unavoidable floor around 4 KB. macOS sizes are reported for transparency and measured against
-the Linux target, not held to it.
+**Size note**: the < 1 KB targets are authoritative on **Linux** and met - a custom link
+script (`sys/linux/uolt.ld`) collapses the binary into one segment, giving 360 B (the real
+machine code is 21 bytes). **macOS** cannot produce sub-page binaries: every Mach-O executable
+carries page-aligned segments plus the `libSystem` load commands, giving an unavoidable floor
+around 4 KB. macOS sizes are reported for transparency and measured against the Linux target,
+not held to it.

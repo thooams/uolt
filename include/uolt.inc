@@ -7,5 +7,6 @@
 // Intel syntax, no % register prefixes, for readable `mov rax, SYS_EXIT`.
 .intel_syntax noprefix
 
-// Process exit status for success (POSIX / shell convention).
+// Process exit status codes (POSIX / shell convention).
 .set EXIT_SUCCESS, 0
+.set EXIT_FAILURE, 1

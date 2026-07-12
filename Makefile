@@ -11,51 +11,53 @@
 
 UNAME_S := $(shell uname -s)
 
-AS      := clang
-ASFLAGS := -c -Iinclude
+AS := clang
 
-BUILD   := build
+BUILD := build
 
 # Per-OS syscall directory and link recipe (constitution Principle III is
 # platform-aware: Linux fully static; macOS carries the OS-imposed libSystem
-# loader stub, into which we make zero calls).
+# loader stub, into which we make zero calls). $(1) = source .S files, $(2) =
+# output binary. clang assembles every .S and links in one step; -Iinclude lets
+# sources #include "uolt.inc".
 ifeq ($(UNAME_S),Darwin)
-  SYSDIR   := sys/macos
-  SDKLIB   := $(shell xcrun --show-sdk-path)/usr/lib
+  SYSDIR := sys/macos
+  SDKLIB := $(shell xcrun --show-sdk-path)/usr/lib
   # macOS forbids fully static binaries; carry the OS-imposed libSystem loader
-  # only (zero calls into it). Strip is skipped (breaks sub-page Mach-O).
-  LINK      = $(AS) -nostdlib -e _start $(1) -L$(SDKLIB) -lSystem -o $(2)
+  # only (zero calls into it).
+  LINK    = $(AS) -nostdlib -e _start -Iinclude $(1) -L$(SDKLIB) -lSystem -o $(2)
 else
-  SYSDIR   := sys/linux
+  SYSDIR := sys/linux
   # Fully static and size-first: a custom link script collapses everything into
   # one segment (see sys/linux/uolt.ld), no build-id, then strip all symbols and
   # section headers to approach the < 1 KB target.
-  LINK      = $(AS) -nostdlib -static -e _start \
-                -Wl,--build-id=none -Wl,-T,sys/linux/uolt.ld \
-                $(1) -o $(2) && strip -s $(2)
+  LINK    = $(AS) -nostdlib -static -e _start -Iinclude \
+              -Wl,--build-id=none -Wl,-T,sys/linux/uolt.ld \
+              $(1) -o $(2) && strip -s $(2)
 endif
 
-# Objects shared by every tool (the internal API + selected syscall wrappers).
-COMMON_SRC := libuolt/exit.S $(SYSDIR)/exit.S
+# Sources every tool needs: the per-OS entry shim, the exit API, and the exit
+# syscall wrapper.
+COMMON := $(SYSDIR)/start.S libuolt/exit.S $(SYSDIR)/exit.S
 
-# Every tool is a uolt-<name> whose source is src/<name>/<name>.S. Add a tool by
-# creating that source and appending its name here.
+# Per-tool extra sources (libuolt helpers + syscall wrappers a tool needs beyond
+# COMMON). Tools without an entry here just use COMMON.
+EXTRA_echo := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
+
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
-# Add a tool by creating that source and appending its name here.
-TOOLNAMES := true false
+# Add a tool by creating that source, appending its name here, and (if needed) an
+# EXTRA_<name> line above.
+TOOLNAMES := true false echo
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean
 all: $(TOOLBINS)
 
-# Generate one explicit rule per tool (robust across make versions; avoids
-# multi-% pattern quirks). Per-tool object files keep parallel builds clean.
+# One explicit rule per tool (robust across make versions). Each links its own
+# source + COMMON + its EXTRA sources in a single clang invocation.
 define TOOL_RULE
-$(BUILD)/uolt-$(1): src/$(1)/$(1).S $$(COMMON_SRC) | $$(BUILD)
-	$$(AS) $$(ASFLAGS) src/$(1)/$(1).S -o $$(BUILD)/$(1).o
-	$$(AS) $$(ASFLAGS) libuolt/exit.S -o $$(BUILD)/$(1)_uolt_exit.o
-	$$(AS) $$(ASFLAGS) $$(SYSDIR)/exit.S -o $$(BUILD)/$(1)_sys_exit.o
-	$$(call LINK,$$(BUILD)/$(1).o $$(BUILD)/$(1)_uolt_exit.o $$(BUILD)/$(1)_sys_exit.o,$$@)
+$(BUILD)/uolt-$(1): src/$(1)/$(1).S $$(COMMON) $$(EXTRA_$(1)) | $$(BUILD)
+	$$(call LINK,src/$(1)/$(1).S $$(COMMON) $$(EXTRA_$(1)),$$@)
 endef
 $(foreach t,$(TOOLNAMES),$(eval $(call TOOL_RULE,$(t))))
 
@@ -73,6 +75,11 @@ test: all
 	@sh tests/posix/false.sh
 	@sh tests/differential/false.sh
 	@sh tests/fuzz/false.sh
+	@sh tests/unit/echo.sh
+	@sh tests/posix/echo.sh
+	@sh tests/differential/echo.sh
+	@sh tests/fuzz/echo.sh
+	@sh tests/trace/echo.sh
 
 bench: all
 	@sh bench/true.sh

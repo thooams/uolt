@@ -31,8 +31,9 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 
 | Command      | Linux x86_64 (uolt / system) | macOS x86_64 (uolt / system) | Target | Notes                     |
 |--------------|------------------------------|------------------------------|--------|---------------------------|
-| `uolt-true`  | 360 B / 26936 B (**75× smaller**) | 4560 B / 84128 B (**18× smaller**) | < 1 KB | POSIX `true`; ignores args, no I/O, exits 0. |
-| `uolt-false` | 360 B / 26936 B (**75× smaller**) | 4560 B / 84128 B (**18× smaller**) | < 1 KB | POSIX `false`; ignores args, no I/O, exits 1. |
+| `uolt-true`  | 384 B / 26936 B (**70× smaller**) | 4664 B / 84128 B (**18× smaller**) | < 1 KB | POSIX `true`; ignores args, no I/O, exits 0. |
+| `uolt-false` | 384 B / 26936 B (**70× smaller**) | 4664 B / 84128 B (**18× smaller**) | < 1 KB | POSIX `false`; ignores args, no I/O, exits 1. |
+| `uolt-echo`  | 608 B / 35208 B (**58× smaller**) | 5160 B / 101136 B (**20× smaller**) | < 3 KB | POSIX `echo`; `-n` supported, no `-e` escapes. |
 
 **Size note**: the < 1 KB targets are authoritative on **Linux** and met - a custom link
 script (`sys/linux/uolt.ld`) collapses the binary into one segment, giving 360 B (the real

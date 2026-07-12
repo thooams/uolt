@@ -19,6 +19,11 @@ One assembler across platforms: the clang integrated assembler, x86_64 sources i
 syntax. Linux binaries are fully static; macOS binaries carry only the OS-imposed
 `libSystem.dylib` loader stub (zero calls into it, direct syscalls only).
 
+To build and test the **Linux** target locally from macOS, run `sh scripts/linux-test.sh`
+(needs a Docker engine such as colima). It uses a prebuilt toolchain image
+(`docker/linux-toolchain.Dockerfile`), so after the first run a full build+test cycle takes
+a few seconds - faster than pushing to CI.
+
 ## Commands
 
 | Command      | Size (Linux x86_64) | Size (macOS x86_64) | Target | Notes                                     |

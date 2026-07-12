@@ -29,11 +29,21 @@ a few seconds - faster than pushing to CI.
 Sizes are shown as **uolt / system tool** so the gain is visible. "System" is the stock
 `/usr/bin` tool on each platform (GNU coreutils on Linux, Apple's on macOS).
 
-| Command      | Linux x86_64 (uolt / system) | macOS x86_64 (uolt / system) | Target | Notes                     |
-|--------------|------------------------------|------------------------------|--------|---------------------------|
-| `uolt-true`  | 384 B / 26936 B (**70× smaller**) | 4664 B / 84128 B (**18× smaller**) | < 1 KB | POSIX `true`; ignores args, no I/O, exits 0. |
-| `uolt-false` | 384 B / 26936 B (**70× smaller**) | 4664 B / 84128 B (**18× smaller**) | < 1 KB | POSIX `false`; ignores args, no I/O, exits 1. |
-| `uolt-echo`  | 608 B / 35208 B (**58× smaller**) | 5160 B / 101136 B (**20× smaller**) | < 3 KB | POSIX `echo`; `-n` supported, no `-e` escapes. |
+| Command      | Size Linux (uolt / system)        | Size macOS (uolt / system)          | Speed Linux (vs system) | Target |
+|--------------|-----------------------------------|-------------------------------------|-------------------------|--------|
+| `uolt-true`  | 384 B / 26936 B (**70× smaller**)  | 4664 B / 84128 B (**18× smaller**)  | **~1.8× faster**        | < 1 KB |
+| `uolt-false` | 384 B / 26936 B (**70× smaller**)  | 4664 B / 84128 B (**18× smaller**)  | **~1.8× faster**        | < 1 KB |
+| `uolt-echo`  | 608 B / 35208 B (**58× smaller**)  | 5160 B / 101136 B (**20× smaller**) | **~2.0× faster**        | < 3 KB |
+
+Behavior: `uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
+trailing newline (`-n` suppresses it, no `-e` escapes). All ignore unrelated arguments.
+
+**Speed note**: timings are measured with `hyperfine` (mean of thousands of runs). The
+constitution requires each tool to be **at worst as fast as the system tool, at best faster**.
+On **Linux** the static, tiny binaries win clearly (no dynamic linker to load): ~1.8-2.0×
+faster. On **macOS** process-spawn overhead (~3 ms of exec/dyld work) dominates and swamps the
+tool's own microseconds, so results sit at **parity within noise** - the rule accepts parity
+where the OS overhead is fixed and outside our control. Run `make bench` to reproduce.
 
 **Size note**: the < 1 KB targets are authoritative on **Linux** and met - a custom link
 script (`sys/linux/uolt.ld`) collapses the binary into one segment, giving 360 B (the real

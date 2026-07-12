@@ -1,6 +1,15 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.3.0 → 1.4.0
+Bump rationale: MINOR. Adds an explicit performance-vs-reference gate: each tool MUST be at
+  least as fast as the standard tool it replaces (ideally faster), measured with hyperfine on
+  the primary benchmark platform (Linux x86_64); where process-spawn overhead dominates
+  (macOS), parity within measurement noise satisfies the rule. Folded into Principle XI and
+  the quality gates. No existing rule is redefined or removed.
+
+Prior amendment history below.
+
 Version change: 1.2.0 → 1.3.0
 Bump rationale: MINOR. Makes Principle III platform-aware so native macOS binaries are
   possible: Linux stays fully static with zero dynamic dependencies, while macOS (which the
@@ -153,6 +162,14 @@ robustness and MUST additionally include:
 Every tool MUST also have an integrated benchmark comparing it against GNU, BSD (on macOS),
 BusyBox, and Toybox across time, memory, and size. All test and benchmark results MUST be
 recorded so regressions are detectable.
+
+**Performance floor (at worst equal, at best faster)**: every tool MUST be at least as fast
+as the standard tool it replaces, and should be faster. This is measured with `hyperfine` on
+the primary benchmark platform, **Linux x86_64**, where the tool's own cost is observable; a
+tool measurably slower than its reference there is rejected. On platforms where process-spawn
+overhead dominates and swamps the tool's own work (notably macOS, ~3 ms of exec/dyld cost),
+**parity within measurement noise** satisfies the rule - we do not require beating fixed OS
+overhead we do not control.
 **Rationale**: Optimized, lightweight assembly has no guard rails; differential tests,
 fuzzing, partial-I/O coverage, and syscall traces are what make the tools provably solid
 rather than merely small and fast.
@@ -222,7 +239,9 @@ Build order, simplest first:
   and fuzz tests, including the partial-I/O edge cases and the syscall-trace check
   (Principle XI).
 - **Performance gate**: a change touching a hot path MUST report before/after benchmarks; a
-  regression MUST be justified or rejected (Principle VII).
+  regression MUST be justified or rejected (Principle VII). Additionally, each tool MUST be at
+  least as fast as the standard tool it replaces on Linux x86_64 (`hyperfine`), and should be
+  faster; macOS parity within measurement noise is acceptable (Principle XI performance floor).
 - **Footprint gate**: a change MUST NOT push a tool past its declared size target without an
   approved target update (Principle VI).
 - **Purity gate**: reviewers MUST reject any libc/libgcc/runtime linkage, any heap allocation,
@@ -249,4 +268,4 @@ writing and either approved or corrected before merge.
 Compliance is reviewed on every change through the quality gates above. Complexity that
 violates a principle MUST be justified or removed.
 
-**Version**: 1.3.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-12
+**Version**: 1.4.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-12

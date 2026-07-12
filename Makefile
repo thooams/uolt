@@ -82,7 +82,7 @@ test: all
 	@sh tests/trace/echo.sh
 
 bench: all
-	@sh bench/true.sh
+	@sh bench/run.sh
 
 clean:
 	rm -rf $(BUILD)

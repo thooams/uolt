@@ -16,8 +16,10 @@ jobs:
         include:
           - name: linux-x86_64
             runner: ubuntu-latest
-          - name: macos-x86_64
-            runner: macos-13   # Intel runner (x86_64), matching the target arch
+          # macOS x86_64 is tested locally, not in CI: GitHub's macOS runners are
+          # billed at a ~10x minute multiplier. Re-enable when needed.
+          # - name: macos-x86_64
+          #   runner: macos-13   # Intel runner (x86_64), matching the target arch
 
     steps:
       - uses: actions/checkout@v4

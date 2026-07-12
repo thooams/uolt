@@ -45,11 +45,14 @@ COMMON := $(SYSDIR)/start.S libuolt/exit.S $(SYSDIR)/exit.S
 EXTRA_echo := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
 EXTRA_pwd  := libuolt/strlen.S libuolt/write.S libuolt/getcwd.S \
               $(SYSDIR)/write.S $(SYSDIR)/getcwd.S
+EXTRA_cat  := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
+              libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
+              $(SYSDIR)/open.S $(SYSDIR)/close.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
 # EXTRA_<name> line above.
-TOOLNAMES := true false echo pwd
+TOOLNAMES := true false echo pwd cat
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean
@@ -85,6 +88,11 @@ test: all
 	@sh tests/unit/pwd.sh
 	@sh tests/differential/pwd.sh
 	@sh tests/trace/pwd.sh
+	@sh tests/unit/cat.sh
+	@sh tests/posix/cat.sh
+	@sh tests/differential/cat.sh
+	@sh tests/fuzz/cat.sh
+	@sh tests/trace/cat.sh
 
 bench: all
 	@sh bench/run.sh

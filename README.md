@@ -35,10 +35,13 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-false` | 384 B / 26936 B (**70× smaller**)  | 4664 B / 84128 B (**18× smaller**)  | **~1.8× faster**        | < 1 KB |
 | `uolt-echo`  | 608 B / 35208 B (**58× smaller**)  | 5160 B / 101136 B (**20× smaller**) | **~2.0× faster**        | < 3 KB |
 | `uolt-pwd`   | 528 B / 35336 B (**67× smaller**)  | 5504 B / 101296 B (**18× smaller**) | **~1.9× faster**        | < 2 KB |
+| `uolt-cat`   | 824 B / 39384 B (**48× smaller**)  | 6048 B / 118992 B (**20× smaller**) | **~1.7× faster**        | < 2 KB |
 
 Behavior: `uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
 trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical working
-directory. All ignore unrelated arguments.
+directory; `uolt-cat` concatenates its file operands (or stdin, also for the operand `-`) to
+stdout verbatim, in 64 KB blocks (`-u` is accepted and ignored - output is already unbuffered).
+All ignore unrelated arguments.
 
 **Speed note**: timings are measured with `hyperfine` (mean of thousands of runs). The
 constitution requires each tool to be **at worst as fast as the system tool, at best faster**.

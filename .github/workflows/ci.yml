@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-test:
+    name: build & test (${{ matrix.name }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            runner: ubuntu-latest
+          - name: macos-x86_64
+            runner: macos-13   # Intel runner (x86_64), matching the target arch
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang binutils strace coreutils
+
+      - name: Show toolchain
+        run: |
+          uname -sm
+          clang --version | head -1
+
+      - name: Build
+        run: make
+
+      - name: Report binary
+        run: |
+          wc -c build/uolt-true
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            file build/uolt-true || true
+            ldd build/uolt-true || echo "not a dynamic executable (static)"
+          else
+            otool -L build/uolt-true || true
+          fi
+
+      - name: Test
+        run: make test
+
+      - name: Report Linux size target (< 1 KB)
+        if: runner.os == 'Linux'
+        run: |
+          size=$(wc -c < build/uolt-true)
+          echo "uolt-true size: ${size} bytes (target < 1024)"
+          if [ "$size" -ge 1024 ]; then
+            echo "::warning::uolt-true is ${size} bytes on Linux, above the 1 KB target; linker tuning needed"
+          else
+            echo "size target met"
+          fi

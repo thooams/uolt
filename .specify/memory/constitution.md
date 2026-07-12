@@ -1,19 +1,24 @@
 <!--
 Sync Impact Report
 ==================
-Version change: 1.1.0 → 1.2.0
-Bump rationale: MINOR. Strengthens Principle XI (Tested & Benchmarked) with mandatory
-  differential testing against reference tools, fuzzing, explicit partial-I/O edge-case
-  tests, and syscall-trace verification (no hidden syscalls, no heap). Extends the
-  correctness gate accordingly. No existing rule is redefined or removed.
+Version change: 1.2.0 → 1.3.0
+Bump rationale: MINOR. Makes Principle III platform-aware so native macOS binaries are
+  possible: Linux stays fully static with zero dynamic dependencies, while macOS (which the
+  OS forbids from linking fully static) is allowed the single unavoidable `libSystem.dylib`
+  loader dependency provided the code makes zero calls into it and uses only direct syscalls.
+  This relaxes an absolute rule for one platform on physical-impossibility grounds; it does
+  not weaken the intent (no libc/runtime usage). Also records the toolchain baseline
+  (clang/`as`, Intel syntax via `.intel_syntax noprefix`) chosen to keep one assembler across
+  x86_64 now and arm64 later.
 
-  Prior amendment (1.0.0 → 1.1.0): added the README-per-command rule (Principle X + README
-  gate).
+  Prior amendments:
+  - 1.1.0 → 1.2.0: hardened Principle XI (differential, fuzz, partial-I/O, syscall-trace).
+  - 1.0.0 → 1.1.0: added the README-per-command rule (Principle X + README gate).
 
 Principles established:
   - I. Assembly-Only Production Code
   - II. Direct Syscalls Only
-  - III. Zero Dependencies, Fully Static
+  - III. Zero Dependencies (Platform-Aware)
   - IV. No Heap, No Hidden Allocation
   - V. Thin Syscall Abstraction + Internal API
   - VI. Minimal Size (Targeted)
@@ -62,11 +67,20 @@ wrapper library, or runtime sits between a tool and the kernel.
 **Rationale**: Every abstraction layer costs instructions, size, and predictability;
 removing them is the whole point.
 
-### III. Zero Dependencies, Fully Static
-Each binary MUST be self-contained and statically linked. No libc, no libgcc, no runtime, no
-dynamic dependency of any kind. A tool MUST run with nothing but the kernel present.
-**Rationale**: Autonomy guarantees minimal size, predictable startup, and no external
-surface that can bloat or break a tool.
+### III. Zero Dependencies (Platform-Aware)
+Each binary MUST be self-contained and make zero calls into any C library, runtime, or
+external code: all functionality goes through direct syscalls (Principle II). Dynamic linkage
+rules are platform-aware, because macOS physically forbids fully static executables:
+- **Linux**: binaries MUST be fully static with no dynamic dependency of any kind; a tool
+  runs with nothing but the kernel present.
+- **macOS**: the only permitted dependency is the single `libSystem.dylib` that the OS
+  requires as the loader for every executable. The tool MUST NOT call any function from it;
+  it uses direct syscalls only. No other dylib, no libc usage.
+No libc, no libgcc, no runtime is ever *used* on any platform.
+**Rationale**: Autonomy guarantees minimal size, predictable startup, and no external surface
+that can bloat or break a tool. macOS makes a fully static binary impossible, so the rule
+targets what matters - zero library *usage* and direct syscalls - while tolerating the one
+loader stub the OS imposes.
 
 ### IV. No Heap, No Hidden Allocation
 The heap is forbidden. No `malloc`, no runtime that allocates on the tool's behalf, no hidden
@@ -145,11 +159,21 @@ rather than merely small and fast.
 
 ## Platform & Architecture Scope
 
-- **Architecture**: x86_64 first and only, initially. ARM is deferred; do not target it now.
-  Porting comes later.
+- **Architecture**: x86_64 first and only, initially. ARM (including Apple Silicon / arm64
+  macOS) is deferred; do not target it now. Porting comes later and will add an `arch/arm64/`
+  path plus a resolution of the direct-syscall question below.
 - **Operating systems**: Linux and macOS, served through the thin per-OS syscall layer of
   Principle V. All non-syscall logic is shared across OSes; a tool file (e.g. `ls.asm`) never
   contains an OS-specific syscall number.
+- **Toolchain**: one assembler across platforms - the clang integrated assembler (`as`),
+  x86_64 sources written in Intel syntax via `.intel_syntax noprefix` (readability,
+  Principle IX). This choice deliberately keeps a single toolchain that will also cover a
+  future arm64 target (NASM would not, being x86-only).
+- **macOS direct-syscall note**: on x86_64 macOS, direct syscalls work and are the chosen
+  path. On future arm64 macOS, Apple restricts direct syscalls (they are expected to originate
+  from libSystem); reaching arm64 macOS will require re-deciding Principle II for that target
+  (accept fragile direct `svc`, or call libSystem's syscall stubs on that platform only). Not
+  in scope now; recorded so the tension is not forgotten.
 - **Layout example**:
   ```
   sys/
@@ -225,4 +249,4 @@ writing and either approved or corrected before merge.
 Compliance is reviewed on every change through the quality gates above. Complexity that
 violates a principle MUST be justified or removed.
 
-**Version**: 1.2.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-12
+**Version**: 1.3.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-12

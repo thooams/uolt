@@ -1,0 +1,12 @@
+# Build output
+build/
+
+# Object files / assembled artifacts
+*.o
+*.obj
+
+# macOS
+.DS_Store
+
+# Editor
+*.swp

@@ -26,10 +26,13 @@ a few seconds - faster than pushing to CI.
 
 ## Commands
 
-| Command      | Size (Linux x86_64) | Size (macOS x86_64) | Target | Notes                                     |
-|--------------|---------------------|---------------------|--------|-------------------------------------------|
-| `uolt-true`  | 360 B ✅            | 4560 B              | < 1 KB | POSIX `true`; ignores args, no I/O, exits 0. |
-| `uolt-false` | 360 B ✅            | 4560 B              | < 1 KB | POSIX `false`; ignores args, no I/O, exits 1. |
+Sizes are shown as **uolt / system tool** so the gain is visible. "System" is the stock
+`/usr/bin` tool on each platform (GNU coreutils on Linux, Apple's on macOS).
+
+| Command      | Linux x86_64 (uolt / system) | macOS x86_64 (uolt / system) | Target | Notes                     |
+|--------------|------------------------------|------------------------------|--------|---------------------------|
+| `uolt-true`  | 360 B / 26936 B (**75× smaller**) | 4560 B / 84128 B (**18× smaller**) | < 1 KB | POSIX `true`; ignores args, no I/O, exits 0. |
+| `uolt-false` | 360 B / 26936 B (**75× smaller**) | 4560 B / 84128 B (**18× smaller**) | < 1 KB | POSIX `false`; ignores args, no I/O, exits 1. |
 
 **Size note**: the < 1 KB targets are authoritative on **Linux** and met - a custom link
 script (`sys/linux/uolt.ld`) collapses the binary into one segment, giving 360 B (the real

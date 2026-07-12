@@ -27,11 +27,12 @@ ifeq ($(UNAME_S),Darwin)
   LINK      = $(AS) -nostdlib -e _start $(1) -L$(SDKLIB) -lSystem -o $(2)
 else
   SYSDIR   := sys/linux
-  # Fully static; small-page alignment + no build-id keep the ELF tiny, then
-  # strip removes the symbol table to approach the < 1 KB target.
+  # Fully static and size-first: a custom link script collapses everything into
+  # one segment (see sys/linux/uolt.ld), no build-id, then strip all symbols and
+  # section headers to approach the < 1 KB target.
   LINK      = $(AS) -nostdlib -static -e _start \
-                -Wl,--build-id=none -Wl,-z,max-page-size=0x1000 \
-                $(1) -o $(2) && strip $(2)
+                -Wl,--build-id=none -Wl,-T,sys/linux/uolt.ld \
+                $(1) -o $(2) && strip -s $(2)
 endif
 
 # Objects shared by every tool (the internal API + selected syscall wrappers).

@@ -72,3 +72,11 @@ machine code is 21 bytes). **macOS** cannot produce sub-page binaries: every Mac
 carries page-aligned segments plus the `libSystem` load commands, giving an unavoidable floor
 around 4 KB. macOS sizes are reported for transparency and measured against the Linux target,
 not held to it.
+
+## License
+
+MIT - see [LICENSE](LICENSE).
+
+These utilities are original, clean-room implementations written from the POSIX specifications;
+they are **not** derived from GNU coreutils (which is GPLv3) or any other existing source, so no
+copyleft obligation applies. The permissive MIT license lets anyone reuse the code freely.

@@ -2,7 +2,7 @@
 
 **Feature Branch**: `017-uolt-rm` (built on `main`)  
 **Created**: 2026-07-13  
-**Status**: Implemented (files only; -r deferred)  
+**Status**: Implemented (files + recursive -r)  
 **Input**: User description: "rm"
 
 ## User Scenarios & Testing *(mandatory)*
@@ -19,11 +19,23 @@
 
 ---
 
+### User Story 2 - Remove a directory tree with -r (Priority: P1)
+
+`uolt-rm -r dir` removes `dir` and everything under it.
+
+**Acceptance Scenarios**:
+
+1. **Given** `-r` and a directory tree, **When** run, **Then** the whole tree is removed.
+2. **Given** `-r` on a plain file, **When** run, **Then** the file is removed.
+3. **Given** a directory without `-r`, **When** run, **Then** it is an error.
+
 ### Edge Cases
 
-- A directory operand is an error (no recursion in v1); `-f` does not remove it either.
+- Without `-r`, a directory operand is an error; `-f` alone does not remove it.
 - No operand is an error, except `rm -f` with no operands, which is a no-op success.
 - A failure sets exit 1 but continues with the remaining operands.
+- Recursion reuses a single directory buffer and a single path buffer at every level (no heap):
+  it re-opens each directory per removal, so no read position is held across the recursion.
 
 ## Requirements *(mandatory)*
 
@@ -32,7 +44,8 @@
 - **FR-001**: MUST remove each file operand with unlink.
 - **FR-002**: With `-f`, MUST silently ignore non-existent operands and make an empty operand list
   a success.
-- **FR-003**: A directory operand MUST be an error (recursive `-r`/`-R` is out of scope in v1).
+- **FR-003**: With `-r`/`-R` MUST remove directory trees; without it a directory operand is an
+  error.
 - **FR-004**: A failure (other than a missing file under -f) MUST diagnose and set exit 1, without
   stopping the remaining operands; `--` ends options.
 - **FR-005**: MUST use no heap (Principle IV).
@@ -48,6 +61,8 @@
 
 ## Assumptions
 
-- Recursive removal (`-r`/`-R`) is deferred: it needs directory reading (getdents/getdirentries),
-  which will be built together with `ls`. `-i` (interactive) is not supported.
-- Reuses the `unlink` wrapper added with `ln`; reuses `write`/`strlen`.
+- `-i` (interactive) is not supported. Recursion (added after `ls` provided directory reading)
+  reuses `opendir`/`getdents`/`unlink`/`rmdir`; the path buffer is 4 KB and the directory buffer
+  32 KB, both on the stack.
+- Reuses the `unlink` wrapper from `ln` and the `opendir`/`getdents` primitives from `ls`, plus
+  `rmdir` from `rmdir`; reuses `write`/`strlen`.

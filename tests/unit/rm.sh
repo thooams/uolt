@@ -26,5 +26,19 @@ touch a b c; mkdir d
 "$BIN" >/dev/null 2>&1; [ $? -ne 0 ] || { echo "FAIL unit: no operand exit 0"; fail=1; }
 "$BIN" -f >/dev/null 2>&1; [ $? -eq 0 ] || { echo "FAIL unit: -f no operand not 0"; fail=1; }
 
+# -r removes a directory tree.
+mkdir -p tree/x/y; touch tree/f tree/x/g tree/x/y/h
+"$BIN" -r tree; { [ $? -eq 0 ] && [ ! -e tree ]; } || { echo "FAIL unit: -r tree"; fail=1; }
+
+# -r on a plain file removes it.
+touch lone; "$BIN" -r lone; { [ $? -eq 0 ] && [ ! -e lone ]; } || { echo "FAIL unit: -r file"; fail=1; }
+
+# -rf ignores missing operands while removing a tree.
+mkdir -p t2/sub; touch t2/sub/x
+"$BIN" -rf t2 missing; { [ $? -eq 0 ] && [ ! -e t2 ]; } || { echo "FAIL unit: -rf tree+missing"; fail=1; }
+
+# -r on a missing directory without -f is an error.
+"$BIN" -r absent 2>/dev/null; [ $? -ne 0 ] || { echo "FAIL unit: -r missing exit 0"; fail=1; }
+
 [ "$fail" -eq 0 ] && echo "PASS unit/rm"
 exit "$fail"

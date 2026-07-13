@@ -27,6 +27,11 @@ compare "one-missing"  "touch a"              a b
 compare "-f one-miss"  "touch a"              -f a b
 compare "symlink"      "touch t; ln -s t l"   l
 compare "-f no-args"   "true"                 -f
+compare "-r tree"      "mkdir -p d/x/y; touch d/f d/x/g d/x/y/h" -r d
+compare "-r file"      "touch f"                                -r f
+compare "-rf missing"  "mkdir -p d; touch d/a"                  -rf d gone
+compare "-r missing"   "true"                                   -r absent
+compare "-r deep"      "mkdir -p a/b/c/d/e; touch a/b/c/d/e/leaf a/b/x" -r a
 
 [ "$fail" -eq 0 ] && echo "PASS differential/rm (ref: $REF)"
 exit "$fail"

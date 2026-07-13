@@ -48,6 +48,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-touch`    | 912 B / 96776 B (**106× smaller**) | 6248 B / 101792 B (**16× smaller**) | **~parity**         | < 1 KB |
 | `uolt-ln`       | 904 B / 55816 B (**62× smaller**) | 6192 B / 102192 B (**17× smaller**) | **~parity**          | < 1 KB |
 | `uolt-rm`       | 744 B / 59912 B (**81× smaller**) | 5624 B / 119184 B (**21× smaller**) | **~parity**          | < 1 KB |
+| `uolt-mv`       | 664 B / 137752 B (**207× smaller**) | 5432 B / 119440 B (**22× smaller**) | **~parity**        | < 1 KB |
 
 Behavior: `uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
 trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical working
@@ -67,7 +68,8 @@ suffix); `uolt-mkdir` creates directories (`-p` makes parents and is idempotent)
 empty directories (`-p` removes the ancestor chain); `uolt-touch` creates missing files and
 updates timestamps to now (`-c` skips creation); `uolt-ln` creates hard links (or symbolic with
 `-s`, replacing an existing target with `-f`); `uolt-rm` removes files (`-f` ignores missing
-operands; recursive `-r` is not yet supported). All ignore unrelated arguments.
+operands; recursive `-r` is not yet supported); `uolt-mv` renames a source to a target
+(two-operand form; moving into a directory is not yet supported). All ignore unrelated arguments.
 
 The `uolt-wc` speedup is large because it counts bytes in the C locale; the stock `wc` does
 multibyte/locale word processing by default. Counts match `wc` run under `LC_ALL=C`.

@@ -43,6 +43,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-basename` | 728 B / 35336 B (**49× smaller**) | 5416 B / 101568 B (**19× smaller**) | **~1.4× faster**     | < 1 KB |
 | `uolt-dirname`  | 688 B / 35208 B (**51× smaller**) | 5408 B / 101168 B (**19× smaller**) | **~1.4× faster**     | < 1 KB |
 | `uolt-sleep`    | 960 B / 35336 B (**37× smaller**) | 5704 B / 101168 B (**18× smaller**) | **~parity**          | < 1 KB |
+| `uolt-mkdir`    | 856 B / 76296 B (**89× smaller**) | 5728 B / 101472 B (**18× smaller**) | **~parity**          | < 1 KB |
 
 Behavior: `uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
 trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical working
@@ -58,7 +59,8 @@ a newline forever, filling a 64 KB buffer to write in large blocks; `uolt-basena
 final component of a path (with an optional suffix removed) and `uolt-dirname` prints the
 directory part, both working purely on the argument bytes with no file access; `uolt-sleep`
 suspends for the sum of its time operands (decimal seconds with an optional `s`/`m`/`h`/`d`
-suffix). All ignore unrelated arguments.
+suffix); `uolt-mkdir` creates directories (`-p` makes parents and is idempotent). All ignore
+unrelated arguments.
 
 The `uolt-wc` speedup is large because it counts bytes in the C locale; the stock `wc` does
 multibyte/locale word processing by default. Counts match `wc` run under `LC_ALL=C`.

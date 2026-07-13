@@ -64,11 +64,12 @@ EXTRA_wc   := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
               $(SYSDIR)/open.S $(SYSDIR)/close.S
 EXTRA_yes  := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
 EXTRA_basename := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
+EXTRA_dirname  := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
 # EXTRA_<name> line above.
-TOOLNAMES := true false echo pwd cat head tail wc yes basename
+TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean
@@ -132,6 +133,10 @@ test: all
 	@sh tests/posix/basename.sh
 	@sh tests/differential/basename.sh
 	@sh tests/fuzz/basename.sh
+	@sh tests/unit/dirname.sh
+	@sh tests/posix/dirname.sh
+	@sh tests/differential/dirname.sh
+	@sh tests/fuzz/dirname.sh
 
 bench: all
 	@sh bench/run.sh

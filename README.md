@@ -41,6 +41,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-wc`    | 1368 B / 55824 B (**41× smaller**) | 6496 B / 102240 B (**16× smaller**) | **~11× faster**         | < 2 KB |
 | `uolt-yes`   | 808 B / 35208 B (**44× smaller**)  | 5464 B / 100928 B (**18× smaller**) | **~parity**             | < 1 KB |
 | `uolt-basename` | 728 B / 35336 B (**49× smaller**) | 5416 B / 101568 B (**19× smaller**) | **~1.4× faster**     | < 1 KB |
+| `uolt-dirname`  | 688 B / 35208 B (**51× smaller**) | 5408 B / 101168 B (**19× smaller**) | **~1.4× faster**     | < 1 KB |
 
 Behavior: `uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
 trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical working
@@ -53,8 +54,9 @@ cost tracks the output, not the file size (on a pipe it retains the last 64 KB);
 counts lines, words, and bytes (`-l`/`-w`/`-c` select; default all), always in that order, with
 a `total` line for multiple files; `uolt-yes` repeats its operands joined by spaces (or `y`) plus
 a newline forever, filling a 64 KB buffer to write in large blocks; `uolt-basename` prints the
-final component of a path (with an optional suffix removed), working purely on the argument bytes
-with no file access. All ignore unrelated arguments.
+final component of a path (with an optional suffix removed) and `uolt-dirname` prints the
+directory part, both working purely on the argument bytes with no file access. All ignore
+unrelated arguments.
 
 The `uolt-wc` speedup is large because it counts bytes in the C locale; the stock `wc` does
 multibyte/locale word processing by default. Counts match `wc` run under `LC_ALL=C`.

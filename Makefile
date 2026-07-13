@@ -74,11 +74,14 @@ EXTRA_rmdir    := libuolt/strlen.S libuolt/write.S libuolt/rmdir.S \
 EXTRA_touch    := libuolt/strlen.S libuolt/write.S libuolt/close.S \
                   libuolt/create.S libuolt/utimes.S $(SYSDIR)/write.S \
                   $(SYSDIR)/close.S $(SYSDIR)/create.S $(SYSDIR)/utimes.S
+EXTRA_ln       := libuolt/strlen.S libuolt/write.S libuolt/link.S \
+                  libuolt/symlink.S libuolt/unlink.S $(SYSDIR)/write.S \
+                  $(SYSDIR)/link.S $(SYSDIR)/symlink.S $(SYSDIR)/unlink.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
 # EXTRA_<name> line above.
-TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch
+TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean
@@ -156,6 +159,8 @@ test: all
 	@sh tests/differential/rmdir.sh
 	@sh tests/unit/touch.sh
 	@sh tests/differential/touch.sh
+	@sh tests/unit/ln.sh
+	@sh tests/differential/ln.sh
 
 bench: all
 	@sh bench/run.sh

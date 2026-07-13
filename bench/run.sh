@@ -25,6 +25,7 @@ sysfalse=/usr/bin/false; [ -x /bin/false ] && sysfalse=/bin/false
 syscat=/bin/cat; [ -x /usr/bin/cat ] && syscat=/usr/bin/cat
 syshead=/usr/bin/head; [ -x /bin/head ] && syshead=/bin/head
 systail=/usr/bin/tail; [ -x /bin/tail ] && systail=/bin/tail
+syswc=/usr/bin/wc; [ -x /bin/wc ] && syswc=/bin/wc
 
 echo "== sizes (uolt vs system) =="
 printf "%-12s %10s %12s\n" tool uolt system
@@ -34,6 +35,7 @@ printf "%-12s %10s %12s\n" uolt-echo  "$(wc -c <$B/uolt-echo)"  "$(wc -c <"$syse
 printf "%-12s %10s %12s\n" uolt-cat   "$(wc -c <$B/uolt-cat)"   "$(wc -c <"$syscat")"
 printf "%-12s %10s %12s\n" uolt-head  "$(wc -c <$B/uolt-head)"  "$(wc -c <"$syshead")"
 printf "%-12s %10s %12s\n" uolt-tail  "$(wc -c <$B/uolt-tail)"  "$(wc -c <"$systail")"
+printf "%-12s %10s %12s\n" uolt-wc    "$(wc -c <$B/uolt-wc)"    "$(wc -c <"$syswc")"
 echo
 
 command -v hyperfine >/dev/null 2>&1 || exit 0
@@ -58,3 +60,6 @@ hyperfine -N --warmup 300 "./$B/uolt-head -n 1000 $bench_data" "$syshead -n 1000
 echo
 echo "== timing: uolt-tail -n 10 <big file> vs system (backward seek) =="
 hyperfine -N --warmup 300 "./$B/uolt-tail -n 10 $bench_data" "$systail -n 10 $bench_data"
+echo
+echo "== timing: uolt-wc <big file> vs system =="
+hyperfine -N --warmup 100 "./$B/uolt-wc $bench_data" "$syswc $bench_data"

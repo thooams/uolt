@@ -27,16 +27,18 @@ export BUILD
 # sources #include "uolt.inc".
 ifeq ($(UNAME_S),Darwin)
   SYSDIR := sys/macos
+  OSDEF  := -DUOLT_OS_MACOS
   SDKLIB := $(shell xcrun --show-sdk-path)/usr/lib
   # macOS forbids fully static binaries; carry the OS-imposed libSystem loader
   # only (zero calls into it).
-  LINK    = $(AS) -nostdlib -e _start -Iinclude $(1) -L$(SDKLIB) -lSystem -o $(2)
+  LINK    = $(AS) -nostdlib -e _start -Iinclude $(OSDEF) $(1) -L$(SDKLIB) -lSystem -o $(2)
 else
   SYSDIR := sys/linux
+  OSDEF  := -DUOLT_OS_LINUX
   # Fully static and size-first: a custom link script collapses everything into
   # one segment (see sys/linux/uolt.ld), no build-id, then strip all symbols and
   # section headers to approach the < 1 KB target.
-  LINK    = $(AS) -nostdlib -static -e _start -Iinclude \
+  LINK    = $(AS) -nostdlib -static -e _start -Iinclude $(OSDEF) \
               -Wl,--build-id=none -Wl,-T,sys/linux/uolt.ld \
               $(1) -o $(2) && strip -s $(2)
 endif
@@ -86,11 +88,14 @@ EXTRA_cp       := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S
                   $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/opendst.S
 EXTRA_chmod    := libuolt/strlen.S libuolt/write.S libuolt/chmod.S \
                   $(SYSDIR)/write.S $(SYSDIR)/chmod.S
+EXTRA_ls       := libuolt/strlen.S libuolt/write.S libuolt/opendir.S libuolt/close.S \
+                  libuolt/getdents.S $(SYSDIR)/write.S $(SYSDIR)/opendir.S \
+                  $(SYSDIR)/close.S $(SYSDIR)/getdents.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
 # EXTRA_<name> line above.
-TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod
+TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean
@@ -178,6 +183,9 @@ test: all
 	@sh tests/differential/cp.sh
 	@sh tests/unit/chmod.sh
 	@sh tests/differential/chmod.sh
+	@sh tests/unit/ls.sh
+	@sh tests/differential/ls.sh
+	@sh tests/trace/ls.sh
 
 bench: all
 	@sh bench/run.sh

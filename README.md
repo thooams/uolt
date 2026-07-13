@@ -51,6 +51,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-mv`       | 664 B / 137752 B (**207× smaller**) | 5432 B / 119440 B (**22× smaller**) | **~parity**        | < 1 KB |
 | `uolt-cp`       | 952 B / 141848 B (**149× smaller**) | 6320 B / 153360 B (**24× smaller**) | **~parity**        | < 1 KB |
 | `uolt-chmod`    | 816 B / 55816 B (**68× smaller**) | 5544 B / 120656 B (**22× smaller**) | **~parity**          | < 1 KB |
+| `uolt-ls`       | 976 B / 142312 B (**146× smaller**) | 7256 B / 154624 B (**21× smaller**) | **~parity**        | < 1 KB |
 
 Behavior: `uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
 trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical working
@@ -73,8 +74,9 @@ updates timestamps to now (`-c` skips creation); `uolt-ln` creates hard links (o
 operands; recursive `-r` is not yet supported); `uolt-mv` renames a source to a target
 (two-operand form; moving into a directory is not yet supported); `uolt-cp` copies a file's
 contents to a target (two-operand form; `-r` and mode preservation are not yet supported);
-`uolt-chmod` sets octal permission bits on files (symbolic modes are not yet supported). All
-ignore unrelated arguments.
+`uolt-chmod` sets octal permission bits on files (symbolic modes are not yet supported);
+`uolt-ls` lists directory entries one per line (`-a` includes hidden entries; output is not
+sorted and columns/`-l` are not yet supported). All ignore unrelated arguments.
 
 The `uolt-wc` speedup is large because it counts bytes in the C locale; the stock `wc` does
 multibyte/locale word processing by default. Counts match `wc` run under `LC_ALL=C`.

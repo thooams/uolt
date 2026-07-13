@@ -10,3 +10,14 @@
 // Process exit status codes (POSIX / shell convention).
 .set EXIT_SUCCESS, 0
 .set EXIT_FAILURE, 1
+
+// Directory-entry field offsets for the directory-reading tools (ls, later rm -r).
+// The record length sits at offset 16 in both the Linux linux_dirent64 and the
+// macOS 64-bit dirent; the inline name starts at a different offset per OS. The
+// build passes -DUOLT_OS_LINUX or -DUOLT_OS_MACOS (see the Makefile).
+.set DIRENT_RECLEN_OFF, 16
+#ifdef UOLT_OS_MACOS
+.set DIRENT_NAME_OFF, 21
+#else
+.set DIRENT_NAME_OFF, 19
+#endif

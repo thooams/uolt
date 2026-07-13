@@ -69,11 +69,13 @@ EXTRA_sleep    := libuolt/strlen.S libuolt/write.S libuolt/sleep.S \
                   $(SYSDIR)/write.S $(SYSDIR)/sleep.S
 EXTRA_mkdir    := libuolt/strlen.S libuolt/write.S libuolt/mkdir.S \
                   $(SYSDIR)/write.S $(SYSDIR)/mkdir.S
+EXTRA_rmdir    := libuolt/strlen.S libuolt/write.S libuolt/rmdir.S \
+                  $(SYSDIR)/write.S $(SYSDIR)/rmdir.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
 # EXTRA_<name> line above.
-TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir
+TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean
@@ -147,6 +149,8 @@ test: all
 	@sh tests/unit/mkdir.sh
 	@sh tests/posix/mkdir.sh
 	@sh tests/differential/mkdir.sh
+	@sh tests/unit/rmdir.sh
+	@sh tests/differential/rmdir.sh
 
 bench: all
 	@sh bench/run.sh

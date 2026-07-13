@@ -39,6 +39,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-head`  | 1336 B / 43528 B (**33× smaller**) | 6416 B / 101952 B (**16× smaller**) | **~1.6× faster**        | < 2 KB |
 | `uolt-tail`  | 1976 B / 64032 B (**32× smaller**) | 7272 B / 119344 B (**16× smaller**) | **~1.1× (parity)**      | < 2 KB |
 | `uolt-wc`    | 1368 B / 55824 B (**41× smaller**) | 6496 B / 102240 B (**16× smaller**) | **~11× faster**         | < 2 KB |
+| `uolt-yes`   | 808 B / 35208 B (**44× smaller**)  | 5464 B / 100928 B (**18× smaller**) | **~parity**             | < 1 KB |
 
 Behavior: `uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
 trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical working
@@ -49,7 +50,9 @@ stdout verbatim, in 64 KB blocks (`-u` is accepted and ignored - output is alrea
 (default 10, `-n` sets N; `-n +N` starts at line N), seeking backwards on regular files so its
 cost tracks the output, not the file size (on a pipe it retains the last 64 KB); `uolt-wc`
 counts lines, words, and bytes (`-l`/`-w`/`-c` select; default all), always in that order, with
-a `total` line for multiple files. All ignore unrelated arguments.
+a `total` line for multiple files; `uolt-yes` repeats its operands joined by spaces (or `y`) plus
+a newline forever, filling a 64 KB buffer to write in large blocks. All ignore unrelated
+arguments.
 
 The `uolt-wc` speedup is large because it counts bytes in the C locale; the stock `wc` does
 multibyte/locale word processing by default. Counts match `wc` run under `LC_ALL=C`.

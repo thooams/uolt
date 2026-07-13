@@ -26,6 +26,7 @@ syscat=/bin/cat; [ -x /usr/bin/cat ] && syscat=/usr/bin/cat
 syshead=/usr/bin/head; [ -x /bin/head ] && syshead=/bin/head
 systail=/usr/bin/tail; [ -x /bin/tail ] && systail=/bin/tail
 syswc=/usr/bin/wc; [ -x /bin/wc ] && syswc=/bin/wc
+sysyes=/usr/bin/yes; [ -x /bin/yes ] && sysyes=/bin/yes
 
 echo "== sizes (uolt vs system) =="
 printf "%-12s %10s %12s\n" tool uolt system
@@ -36,6 +37,7 @@ printf "%-12s %10s %12s\n" uolt-cat   "$(wc -c <$B/uolt-cat)"   "$(wc -c <"$sysc
 printf "%-12s %10s %12s\n" uolt-head  "$(wc -c <$B/uolt-head)"  "$(wc -c <"$syshead")"
 printf "%-12s %10s %12s\n" uolt-tail  "$(wc -c <$B/uolt-tail)"  "$(wc -c <"$systail")"
 printf "%-12s %10s %12s\n" uolt-wc    "$(wc -c <$B/uolt-wc)"    "$(wc -c <"$syswc")"
+printf "%-12s %10s %12s\n" uolt-yes   "$(wc -c <$B/uolt-yes)"   "$(wc -c <"$sysyes")"
 echo
 
 command -v hyperfine >/dev/null 2>&1 || exit 0

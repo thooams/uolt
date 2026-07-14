@@ -56,6 +56,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-grep`     | 1448 B / 186824 B (**129× smaller**) | 7648 B / 153760 B (**20× smaller**) | **~parity**       | < 2 KB |
 | `uolt-find`     | 1072 B / 204264 B (**190× smaller**) | 8928 B / 171280 B (**19× smaller**) | **~parity**       | < 2 KB |
 | `uolt-sort`     | 1016 B / 105272 B (**104× smaller**) | 8888 B / 206032 B (**23× smaller**) | **~parity**       | < 2 KB |
+| `uolt-tee`      | 960 B / 39432 B (**41× smaller**) | 9408 B / 101232 B (**11× smaller**) | **~parity**          | < 1 KB |
 
 Behavior: `uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
 trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical working
@@ -85,7 +86,8 @@ sorted and columns/`-l` are not yet supported); `uolt-seq` prints an integer seq
 (`-i` case-insensitive, `-v` invert; like `grep -F`, no regular expressions yet); `uolt-find`
 lists paths recursively (`-type f`/`d` filter; `-name` glob not yet supported); `uolt-sort`
 sorts lines in C-locale byte order (`-r` reverse; input is held in a 1 MB buffer, `-n`/`-u` not
-yet supported). All ignore unrelated arguments.
+yet supported); `uolt-tee` copies stdin to stdout and to each file (`-a` appends). All ignore
+unrelated arguments.
 
 The `uolt-wc` speedup is large because it counts bytes in the C locale; the stock `wc` does
 multibyte/locale word processing by default. Counts match `wc` run under `LC_ALL=C`.

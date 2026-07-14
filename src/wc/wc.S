@@ -1,18 +1,19 @@
 // src/wc/wc.S - uolt-wc: the POSIX `wc` utility.
 //
-// Counts lines, words, and bytes of each file operand, or of standard input.
-// Options -l, -w, -c select which counts to print (combinable as -lwc or as
-// separate flags); with none given, all three are printed. The counts are
-// always emitted in the POSIX order lines, words, bytes - regardless of the
-// order the flags were given - followed by the file name. With more than one
-// file operand a final "total" line sums the columns.
+// Counts lines, words, bytes, and characters of each file operand, or of
+// standard input. Options -l, -w, -c, -m select which counts to print (combinable
+// as -lwc or as separate flags); with none given, lines/words/bytes are printed.
+// The counts are always emitted in the order lines, words, chars, bytes -
+// regardless of the order the flags were given - followed by the file name. With
+// more than one file operand a final "total" line sums the columns. In the C
+// locale a character is a byte, so -m equals -c numerically.
 //
 // The exact column spacing of `wc` is implementation-defined and differs between
 // GNU (dynamic width) and BSD (fixed width); this tool prints one space between
 // fields with no padding. A "word" is a maximal run of non-<blank> bytes, where
 // <blank> is space, tab, newline, vertical tab, form feed, or carriage return
-// (the C-locale isspace set). Bytes are counted as read; -m (characters) and the
-// stdin operand "-" are out of scope in v1 (POSIX-minimal, Principle VIII).
+// (the C-locale isspace set). Bytes are counted as read; the stdin operand "-"
+// is out of scope in v1 (POSIX-minimal, Principle VIII).
 //
 // Called as uolt_main(argc in rdi, argv in rsi). A file that cannot be opened
 // yields a stderr diagnostic, sets the exit status to 1, and does not stop the
@@ -95,6 +96,8 @@ uolt_main:
     je      1f
     cmp     al, 'c'
     je      1f
+    cmp     al, 'm'
+    je      1f
     jmp     .opt_done           // unknown letter -> this arg is an operand
 1:
     inc     rdi
@@ -114,8 +117,12 @@ uolt_main:
     or      r12, 2
 3:
     cmp     al, 'c'
-    jne     4f
+    jne     5f
     or      r12, 4
+5:
+    cmp     al, 'm'
+    jne     4f
+    or      r12, 8              // -m: characters (= bytes in the C locale)
 4:
     inc     rdi
     jmp     .ap
@@ -290,6 +297,12 @@ emit_line:
     mov     rax, [rbp + LOC_W]
     call    put_uint
 2:
+    test    r12b, 8             // -m characters (before the byte column, GNU order)
+    jz      5f
+    call    sep_if_needed
+    mov     rax, [rbp + LOC_C]  // C locale: characters == bytes
+    call    put_uint
+5:
     test    r12b, 4
     jz      3f
     call    sep_if_needed

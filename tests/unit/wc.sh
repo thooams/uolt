@@ -37,6 +37,13 @@ got=$("$BIN" "$tmp/a" | norm); rc=$?
 last=$(tail -1 "$tmp/o" | norm)
 [ "$last" = "2 6 27 total" ] || { echo "FAIL unit: total line [$last]"; fail=1; }
 
+# -m characters (= bytes in the C locale). GNU column order: lines, words, chars,
+# bytes; uolt prints two columns when both -m and -c are given.
+[ "$("$BIN" -m "$tmp/a" | norm)" = "24 $tmp/a" ]      || { echo "FAIL unit: -m"; fail=1; }
+[ "$("$BIN" -cm "$tmp/a" | norm)" = "24 24 $tmp/a" ]  || { echo "FAIL unit: -cm two cols"; fail=1; }
+[ "$("$BIN" -lwm "$tmp/a" | norm)" = "2 5 24 $tmp/a" ] || { echo "FAIL unit: -lwm"; fail=1; }
+[ "$(printf 'abcd' | "$BIN" -m | norm)" = "4" ]       || { echo "FAIL unit: -m stdin"; fail=1; }
+
 # Missing file -> nonzero exit, stderr, later file still counted.
 "$BIN" "$tmp/nope" "$tmp/b" >"$tmp/o" 2>"$tmp/e"; rc=$?
 [ "$rc" -ne 0 ] || { echo "FAIL unit: missing exit 0"; fail=1; }

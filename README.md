@@ -86,7 +86,7 @@ flag reference are in the collapsible sections below.
 | `cat`  | concatenate files / stdin (`-u`)                    |  824 B | 39.4 KB | **48×** |
 | `head` | first N lines / bytes (`-n`, `-c`)                  | 1472 B | 43.5 KB | **30×** |
 | `tail` | last N lines / bytes (`-n`, `-n +N`, `-c`)          | 2312 B | 64.0 KB | **28×** |
-| `wc`   | count lines / words / bytes (`-l`/`-w`/`-c`)        | 1368 B | 55.8 KB | **41×** |
+| `wc`   | count lines / words / bytes / chars (`-l`/`-w`/`-c`/`-m`) | 1408 B | 55.8 KB | **40×** |
 | `tee`  | copy stdin to stdout and files (`-a`)               |  960 B | 39.4 KB | **41×** |
 
 ### Text processing
@@ -155,8 +155,9 @@ is already unbuffered); `uolt-head` prints the first N lines (default 10, `-n` s
 one file is given; `uolt-tail` prints the last N lines (default 10, `-n` sets N; `-n +N`
 starts at line N; `-c` counts bytes), seeking backwards on regular files so its cost
 tracks the output, not the file size (on a pipe it retains the last 64 KB); `uolt-wc`
-counts lines, words, and bytes (`-l`/`-w`/`-c` select; default all), always in that
-order, with a `total` line for multiple files; `uolt-yes` repeats its operands joined by
+counts lines, words, bytes, and characters (`-l`/`-w`/`-c`/`-m` select; default
+lines/words/bytes), always in the order lines/words/chars/bytes, with a `total`
+line for multiple files (in the C locale a character is a byte, so `-m` equals `-c`); `uolt-yes` repeats its operands joined by
 spaces (or `y`) plus a newline forever, filling a 64 KB buffer to write in large blocks;
 `uolt-basename` prints the final component of a path (with an optional suffix removed) and
 `uolt-dirname` prints the directory part, both working purely on the argument bytes with

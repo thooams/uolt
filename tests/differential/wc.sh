@@ -44,6 +44,21 @@ compare "multi+total"  "$tmp/a" "$tmp/b" "$tmp/c"
 compare "missing"      "$tmp/nope"
 compare "missing+good" "$tmp/nope" "$tmp/a"
 
+# -m characters. In the C locale a character is a byte, so -m alone agrees with
+# both BSD and GNU wc. When BOTH -c and -m are requested BSD prints a single
+# char/byte column while GNU prints two; uolt follows GNU, so those cases are
+# compared only against a GNU wc.
+compare "-m"          -m "$tmp/a"
+compare "-lwm"        -lwm "$tmp/a"
+compare "-wm"         -wm "$tmp/b"
+compare "-m big"      -m "$tmp/big"
+compare "-m multi"    -m "$tmp/a" "$tmp/b"
+if "$REF" --version 2>/dev/null | grep -qi GNU; then
+    compare "-cm"     -cm "$tmp/a"
+    compare "-mc"     -mc "$tmp/a"
+    compare "-lwmc"   -lwmc "$tmp/a"
+fi
+
 # stdin (no name) under LC_ALL=C.
 u=$("$BIN" <"$tmp/d" | norm)
 s=$(LC_ALL=C "$REF" <"$tmp/d" | norm)

@@ -18,6 +18,15 @@
 .set DIRENT_RECLEN_OFF, 16
 #ifdef UOLT_OS_MACOS
 .set DIRENT_NAME_OFF, 21
+.set DIRENT_TYPE_OFF, 20
 #else
 .set DIRENT_NAME_OFF, 19
+.set DIRENT_TYPE_OFF, 18
 #endif
+
+// d_type values (DT_*) reported by getdents (may be DT_UNKNOWN on some
+// filesystems, in which case a caller falls back to opening the path).
+.set DT_UNKNOWN, 0
+.set DT_DIR,     4
+.set DT_REG,     8
+.set DT_LNK,     10

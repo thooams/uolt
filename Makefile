@@ -95,11 +95,12 @@ EXTRA_ls       := libuolt/strlen.S libuolt/write.S libuolt/opendir.S libuolt/clo
                   $(SYSDIR)/close.S $(SYSDIR)/getdents.S
 EXTRA_seq      := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
 EXTRA_grep     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
+EXTRA_find     := libuolt/strlen.S libuolt/write.S libuolt/opendir.S libuolt/close.S libuolt/getdents.S $(SYSDIR)/write.S $(SYSDIR)/opendir.S $(SYSDIR)/close.S $(SYSDIR)/getdents.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
 # EXTRA_<name> line above.
-TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls seq grep
+TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls seq grep find
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean
@@ -194,6 +195,8 @@ test: all
 	@sh tests/differential/seq.sh
 	@sh tests/unit/grep.sh
 	@sh tests/differential/grep.sh
+	@sh tests/unit/find.sh
+	@sh tests/differential/find.sh
 
 bench: all
 	@sh bench/run.sh

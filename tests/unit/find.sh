@@ -27,6 +27,22 @@ got=$("$BIN" . -type f | sort | tr '\n' ',')
 got=$("$BIN" . -type d | sort | tr '\n' ',')
 [ "$got" = ".,./a,./a/b," ] || { echo "FAIL unit: -type d [$got]"; fail=1; }
 
+# -type l: symbolic links only.
+got=$("$BIN" . -type l | sort | tr '\n' ',')
+[ "$got" = "./slink," ] || { echo "FAIL unit: -type l [$got]"; fail=1; }
+
+# -maxdepth 0: only the starting points.
+got=$("$BIN" . -maxdepth 0)
+[ "$got" = "." ] || { echo "FAIL unit: -maxdepth 0 [$got]"; fail=1; }
+
+# -maxdepth 1: starting point plus direct children, no grandchildren.
+got=$("$BIN" . -maxdepth 1 | sort | tr '\n' ',')
+[ "$got" = ".,./a,./slink,./top," ] || { echo "FAIL unit: -maxdepth 1 [$got]"; fail=1; }
+
+# -maxdepth combined with -type.
+got=$("$BIN" . -maxdepth 2 -type f | sort | tr '\n' ',')
+[ "$got" = "./a/f1,./top," ] || { echo "FAIL unit: -maxdepth 2 -type f [$got]"; fail=1; }
+
 # A single file operand prints just itself.
 got=$("$BIN" top)
 [ "$got" = "top" ] || { echo "FAIL unit: file operand [$got]"; fail=1; }

@@ -1,9 +1,11 @@
 // src/find/find.S - the `find` utility (recursive listing).
 //
-// find [path...] [-type f|d]: print each path at or under the given starting
-// points (default "."), one per line, descending into directories. -type f
-// restricts the output to regular files, -type d to directories. The -name glob
-// filter and the many other predicates/actions are out of scope in v1.
+// find [path...] [-maxdepth N] [-type f|d|l] [-name GLOB]: print each path at or
+// under the given starting points (default "."), one per line, descending into
+// directories. -type restricts the output to regular files (f), directories (d),
+// or symbolic links (l); -maxdepth N descends at most N levels below each
+// starting point; -name matches a glob against the basename. Other predicates and
+// actions are out of scope in v1.
 //
 // The walk descends with recursion: each directory level keeps its own getdents
 // buffer on the stack so it survives the recursion into child entries, while a
@@ -27,6 +29,8 @@
 .set DBUFSZ,   4096
 
 .set LOC_NAME, -48              // -name glob pattern (0 = none)
+.set LOC_MAXD, -56              // -maxdepth limit (large = unlimited)
+.set DT_UNL,   0x7fffffff       // "unlimited" sentinel for LOC_MAXD
 
 .text
 .globl uolt_main
@@ -42,6 +46,7 @@ uolt_main:
     mov     r15, rsp
     xor     r14, r14                    // type filter (0 = any)
     mov     qword ptr [rbp + LOC_NAME], 0       // -name pattern (0 = none)
+    mov     qword ptr [rbp + LOC_MAXD], DT_UNL  // -maxdepth (unlimited)
 
     mov     r12, rdi
     dec     r12                         // operand count
@@ -63,13 +68,20 @@ uolt_main:
     call    .streq
     test    rax, rax
     jnz     .strip_name
+    lea     rdi, [rip + opt_maxd]
+    mov     rsi, [r13 + r12*8 - 16]
+    call    .streq
+    test    rax, rax
+    jnz     .strip_maxd
     jmp     .paths
 .strip_type:
-    mov     rax, [r13 + r12*8 - 8]      // last operand: f or d
+    mov     rax, [r13 + r12*8 - 8]      // last operand: f, d, or l
     movzx   rcx, byte ptr [rax]
     cmp     cl, 'f'
     je      1f
     cmp     cl, 'd'
+    je      1f
+    cmp     cl, 'l'
     jne     .paths
 1:
     cmp     byte ptr [rax + 1], 0
@@ -82,6 +94,14 @@ uolt_main:
     mov     [rbp + LOC_NAME], rax
     sub     r12, 2
     jmp     .strip
+.strip_maxd:
+    mov     rdi, [r13 + r12*8 - 8]      // the depth number
+    call    .atoi                       // -> rax (>= 0), or -1 if not a number
+    test    rax, rax
+    js      .paths                      // not a valid number: leave as an operand
+    mov     [rbp + LOC_MAXD], rax
+    sub     r12, 2
+    jmp     .strip
 
 .paths:
     test    r12, r12
@@ -90,6 +110,7 @@ uolt_main:
     mov     byte ptr [r15], '.'
     mov     rdi, 1
     xor     rsi, rsi                    // DT_UNKNOWN: probe by opening
+    xor     rdx, rdx                    // depth 0
     call    find_entry
     jmp     .fin
 .ploop:
@@ -100,6 +121,7 @@ uolt_main:
     call    .copy_str                   // -> rax = length
     mov     rdi, rax
     xor     rsi, rsi                    // DT_UNKNOWN for command-line operands
+    xor     rdx, rdx                    // depth 0
     call    find_entry
     add     r13, 8
     dec     r12
@@ -124,6 +146,8 @@ uolt_main:
 find_entry:
     push    rbx
     push    r12
+    push    r13
+    mov     r13, rdx                    // this entry's depth
     mov     rbx, rdi
     mov     byte ptr [r15 + rbx], 0
     cmp     rsi, DT_DIR
@@ -164,6 +188,12 @@ find_entry:
 .fe_have_dir:
     mov     dl, 'd'
     call    print_cur
+    cmp     r13, [rbp + LOC_MAXD]       // at/over -maxdepth: print but do not descend
+    jl      .fe_descend
+    mov     rdi, r12
+    call    uolt_close
+    jmp     .fe_ret
+.fe_descend:
     sub     rsp, DBUFSZ + 16            // this level's getdents buffer + state
 .fe_read:
     mov     rdi, r12
@@ -210,6 +240,7 @@ find_entry:
 .fe_cpydone:
     sub     rdi, r15                    // new length
     mov     rsi, r8                     // pass the entry's d_type down
+    lea     rdx, [r13 + 1]              // child depth
     call    find_entry                  // recurse
     jmp     .fe_ent
 .fe_endread:
@@ -217,6 +248,7 @@ find_entry:
     mov     rdi, r12
     call    uolt_close
 .fe_ret:
+    pop     r13
     pop     r12
     pop     rbx
     ret
@@ -337,6 +369,31 @@ glob:
     xor     rax, rax
     ret
 
+// .atoi(rdi = ASCIZ) -> rax = value >= 0, or -1 if empty or non-digit.
+.atoi:
+    movzx   ecx, byte ptr [rdi]
+    test    cl, cl
+    jz      .ai_err
+    xor     rax, rax
+.ai_lp:
+    movzx   ecx, byte ptr [rdi]
+    test    cl, cl
+    jz      .ai_ok
+    sub     cl, '0'
+    cmp     cl, 9
+    ja      .ai_err
+    imul    rax, rax, 10
+    movzx   rcx, cl
+    add     rax, rcx
+    inc     rdi
+    jmp     .ai_lp
+.ai_ok:
+    ret
+.ai_err:
+    mov     rax, -1
+    ret
+
 nl_char:  .byte  0x0a
 opt_type: .asciz "-type"
 opt_name: .asciz "-name"
+opt_maxd: .asciz "-maxdepth"

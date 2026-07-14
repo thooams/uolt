@@ -33,6 +33,17 @@ compare "-name log"  . -name '*.log'
 compare "-name none" . -name 'nomatch*'
 compare "type+name"  . -type f -name 'f*'
 compare "name f4"    . -name 'f4'
+# -type l (symbolic links)
+compare "-type l"    . -type l
+compare "sub -type l" a -type l
+# -maxdepth
+compare "-maxdepth 0" . -maxdepth 0
+compare "-maxdepth 1" . -maxdepth 1
+compare "-maxdepth 2" . -maxdepth 2
+compare "maxd+type"  . -maxdepth 2 -type f
+compare "maxd+type d" . -maxdepth 1 -type d
+compare "maxd+name"  . -maxdepth 2 -name '*.txt'
+compare "sub maxd"   a -maxdepth 1
 
 [ "$fail" -eq 0 ] && echo "PASS differential/find (ref: $REF)"
 exit "$fail"

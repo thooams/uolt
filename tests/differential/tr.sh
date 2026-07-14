@@ -9,7 +9,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fail=0
 
-printf 'Hello World 123\nMixed CASE test\nsymbols!@# and 456\n' >"$tmp/in"
+printf 'Hello   World  123\naaabbbccc\nMixed    CASE test\nsymbols!@#   and 456\n' >"$tmp/in"
 
 compare() {
     u=$(LC_ALL=C "$BIN" "$@" <"$tmp/in" 2>/dev/null)
@@ -25,6 +25,12 @@ compare 'aeiou' '*'
 compare '0-9' '#'
 compare -d ' '
 compare 'A-Za-z' 'N-ZA-Mn-za-m'   # rot13-ish mapping
+# -s squeeze (leading option only, for BSD tr compatibility)
+compare -s ' '
+compare -s 'a-c'
+compare -s 'abcglo'
+compare -s a-z A-Z          # translate then squeeze the mapped set
+compare -ds 'A-Z' ' '
 
 [ "$fail" -eq 0 ] && echo "PASS differential/tr (ref: $REF)"
 exit "$fail"

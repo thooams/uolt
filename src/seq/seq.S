@@ -1,23 +1,30 @@
 // src/seq/seq.S - the `seq` utility (integers).
 //
-// seq [first [incr]] last: print the integer sequence from first to last,
-// stepping by incr, one number per line. Defaults: first = 1, incr = 1. A
-// negative incr counts down. Non-integer (floating) operands and format options
-// (-w, -f, -s) are out of scope in v1.
+// seq [-s STRING] [-w] [first [incr]] last: print the integer sequence from
+// first to last, stepping by incr. Defaults: first = 1, incr = 1, one number
+// per line. -s sets the separator placed between numbers (a newline still
+// terminates the output). -w pads every number with leading zeros to the width
+// of the widest term. A negative incr counts down. Non-integer (floating)
+// operands and -f are out of scope in v1.
 //
 // Numbers are formatted into a small stack buffer (no heap, Principle IV) and
-// written one line at a time. An invalid operand, a zero increment, or the wrong
+// written one at a time. An invalid operand, a zero increment, or the wrong
 // operand count is an error (stderr diagnostic, exit 1).
 //
 // Called as uolt_main(argc in rdi, argv in rsi) by the per-OS entry shim.
 //
 // Register roles (callee-saved): r12 = first, r13 = incr, r14 = last, r15 = the
-//   running value. Stack: a 32-byte number buffer.
+//   running value. Number buffer at [rbp-72 .. rbp-40); stack locals below it.
 
 #include "uolt.inc"
 
 .set STDOUT, 1
 .set STDERR, 2
+
+.set LOC_SEP,    -80         // separator pointer (default = newline)
+.set LOC_SEPLEN, -88         // separator length
+.set LOC_WIDTH,  -96         // pad width (0 = no -w)
+.set LOC_FIRST,  -104        // 1 until the first number is emitted
 
 .text
 .globl uolt_main
@@ -29,12 +36,66 @@ uolt_main:
     push    r13
     push    r14
     push    r15
-    sub     rsp, 32                     // number buffer at [rbp-72 .. rbp-40)
+    sub     rsp, 96
 
-    mov     rbx, rsi                    // argv
+    lea     rbx, [rsi + 8]              // &argv[1] (first operand)
     mov     r10, rdi
     dec     r10                         // operand count
 
+    lea     rax, [rip + nl]             // default separator = "\n"
+    mov     [rbp + LOC_SEP], rax
+    mov     qword ptr [rbp + LOC_SEPLEN], 1
+    mov     qword ptr [rbp + LOC_WIDTH], 0
+
+.opt:
+    test    r10, r10
+    jz      .parsed
+    mov     rdi, [rbx]
+    cmp     byte ptr [rdi], '-'
+    jne     .parsed
+    cmp     byte ptr [rdi + 1], 0
+    je      .parsed                     // "-" alone is not an option
+    movzx   eax, byte ptr [rdi + 1]
+    cmp     al, 'w'
+    je      .opt_w
+    cmp     al, 's'
+    je      .opt_s
+    cmp     al, '-'
+    je      .opt_ddash
+    // A leading '-' before a digit is a negative operand, not an option.
+    movzx   eax, byte ptr [rdi + 1]
+    sub     al, '0'
+    cmp     al, 9
+    jbe     .parsed
+    jmp     .usage
+.opt_w:
+    cmp     byte ptr [rdi + 2], 0
+    jne     .usage
+    mov     qword ptr [rbp + LOC_WIDTH], 1     // sentinel; real width set later
+    add     rbx, 8
+    dec     r10
+    jmp     .opt
+.opt_s:
+    lea     rdi, [rdi + 2]              // "-sSEP" attached, or "-s" then next arg
+    cmp     byte ptr [rdi], 0
+    jne     .have_sep
+    add     rbx, 8
+    dec     r10
+    jz      .usage
+    mov     rdi, [rbx]
+.have_sep:
+    mov     [rbp + LOC_SEP], rdi
+    call    uolt_strlen
+    mov     [rbp + LOC_SEPLEN], rax
+    add     rbx, 8
+    dec     r10
+    jmp     .opt
+.opt_ddash:
+    cmp     byte ptr [rdi + 2], 0
+    jne     .usage
+    add     rbx, 8
+    dec     r10
+.parsed:
     mov     r12, 1                      // first
     mov     r13, 1                      // incr
     cmp     r10, 1
@@ -45,38 +106,54 @@ uolt_main:
     je      .three
     jmp     .usage
 .one:
-    mov     rdi, [rbx + 8]
+    mov     rdi, [rbx]
     call    parse_int
     jc      .bad
-    mov     r14, rax                    // last
+    mov     r14, rax
     jmp     .ready
 .two:
-    mov     rdi, [rbx + 8]
-    call    parse_int
-    jc      .bad
-    mov     r12, rax                    // first
-    mov     rdi, [rbx + 16]
-    call    parse_int
-    jc      .bad
-    mov     r14, rax                    // last
-    jmp     .ready
-.three:
-    mov     rdi, [rbx + 8]
+    mov     rdi, [rbx]
     call    parse_int
     jc      .bad
     mov     r12, rax
+    mov     rdi, [rbx + 8]
+    call    parse_int
+    jc      .bad
+    mov     r14, rax
+    jmp     .ready
+.three:
+    mov     rdi, [rbx]
+    call    parse_int
+    jc      .bad
+    mov     r12, rax
+    mov     rdi, [rbx + 8]
+    call    parse_int
+    jc      .bad
+    mov     r13, rax
     mov     rdi, [rbx + 16]
     call    parse_int
     jc      .bad
-    mov     r13, rax                    // incr
-    mov     rdi, [rbx + 24]
-    call    parse_int
-    jc      .bad
-    mov     r14, rax                    // last
+    mov     r14, rax
 .ready:
     test    r13, r13
     jz      .bad                        // zero increment
+
+    // -w: pad width = max(fmt_len(first), fmt_len(last))
+    cmp     qword ptr [rbp + LOC_WIDTH], 0
+    je      .noW
+    mov     rax, r12
+    call    fmt_len
+    mov     rbx, rax
+    mov     rax, r14
+    call    fmt_len
+    cmp     rax, rbx
+    jae     1f
+    mov     rax, rbx
+1:
+    mov     [rbp + LOC_WIDTH], rax
+.noW:
     mov     r15, r12                    // i = first
+    mov     qword ptr [rbp + LOC_FIRST], 1
 
 .loop:
     test    r13, r13
@@ -88,11 +165,27 @@ uolt_main:
     cmp     r15, r14                    // descending: stop when i < last
     jl      .done
 .emit:
+    cmp     qword ptr [rbp + LOC_FIRST], 0
+    jne     .noSEP
+    mov     rdi, STDOUT                 // separator before every number but the first
+    mov     rsi, [rbp + LOC_SEP]
+    mov     rdx, [rbp + LOC_SEPLEN]
+    call    uolt_write
+.noSEP:
+    mov     qword ptr [rbp + LOC_FIRST], 0
     mov     rax, r15
-    call    emit_num
+    call    put_num
     add     r15, r13
     jmp     .loop
 .done:
+    cmp     qword ptr [rbp + LOC_FIRST], 1
+    je      .done0                      // empty sequence -> no trailing newline
+    mov     byte ptr [rbp - 40], 0x0a
+    mov     rdi, STDOUT
+    lea     rsi, [rbp - 40]
+    mov     rdx, 1
+    call    uolt_write
+.done0:
     xor     eax, eax
     jmp     .ret
 .bad:
@@ -105,7 +198,7 @@ uolt_main:
     call    err_puts
     mov     eax, 1
 .ret:
-    add     rsp, 32
+    add     rsp, 96
     pop     r15
     pop     r14
     pop     r13
@@ -114,11 +207,10 @@ uolt_main:
     pop     rbp
     ret
 
-// emit_num(rax = signed value): format "value\n" into the stack buffer and write
-// it. Uses the 32-byte buffer at [rbp-72]; clobbers caller-saved registers only.
-emit_num:
-    lea     rdi, [rbp - 41]             // last buffer byte
-    mov     byte ptr [rdi], 0x0a        // trailing newline
+// put_num(rax = signed value): format the value (zero-padded to LOC_WIDTH when
+// set) with no trailing newline, and write it. Uses the buffer at [rbp-72).
+put_num:
+    lea     rdi, [rbp - 40]             // one past the buffer end
     xor     r9, r9                      // negative flag
     test    rax, rax
     jns     1f
@@ -126,24 +218,58 @@ emit_num:
     neg     rax
 1:
     mov     rcx, 10
+    xor     r11, r11                    // digit count
 2:
     xor     rdx, rdx
-    div     rcx                         // rax/=10, rdx=digit
+    div     rcx
     add     dl, '0'
     dec     rdi
     mov     [rdi], dl
+    inc     r11
     test    rax, rax
     jnz     2b
+    // pad with leading zeros: current width = digits + sign
+    mov     rax, [rbp + LOC_WIDTH]
+    test    rax, rax
+    jz      .pn_sign
+    lea     rcx, [r11 + r9]
+.pn_pad:
+    cmp     rcx, rax
+    jae     .pn_sign
+    dec     rdi
+    mov     byte ptr [rdi], '0'
+    inc     rcx
+    jmp     .pn_pad
+.pn_sign:
     test    r9, r9
     jz      3f
     dec     rdi
     mov     byte ptr [rdi], '-'
 3:
-    lea     rdx, [rbp - 40]             // one past the newline
+    lea     rdx, [rbp - 40]
     sub     rdx, rdi                    // length
     mov     rsi, rdi
     mov     rdi, STDOUT
     jmp     uolt_write
+
+// fmt_len(rax = signed value) -> rax = printed length (digits + sign).
+fmt_len:
+    xor     r8, r8
+    test    rax, rax
+    jns     1f
+    mov     r8, 1
+    neg     rax
+1:
+    mov     rcx, 10
+    xor     r11, r11
+2:
+    xor     rdx, rdx
+    div     rcx
+    inc     r11
+    test    rax, rax
+    jnz     2b
+    lea     rax, [r11 + r8]
+    ret
 
 // parse_int(rdi = ASCIZ) -> rax = value; CF set on error (empty or non-digit).
 // Accepts an optional leading '-'.
@@ -191,5 +317,6 @@ err_puts:
     mov     rdi, STDERR
     jmp     uolt_write
 
-err_usage: .asciz "uolt-seq: usage: seq [first [incr]] last\n"
+nl:        .asciz "\n"
+err_usage: .asciz "uolt-seq: usage: seq [-s STRING] [-w] [first [incr]] last\n"
 err_bad:   .asciz "uolt-seq: invalid integer argument\n"

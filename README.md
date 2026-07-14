@@ -52,7 +52,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-cp`       | 1816 B / 141848 B (**78× smaller**) | 6320 B / 153360 B (**24× smaller**) | **~parity**        | < 2 KB |
 | `uolt-chmod`    | 1376 B / 55816 B (**41× smaller**) | 5544 B / 120656 B (**22× smaller**) | **~parity**          | < 1 KB |
 | `uolt-ls`       | 976 B / 142312 B (**146× smaller**) | 7256 B / 154624 B (**21× smaller**) | **~parity**        | < 1 KB |
-| `uolt-seq`      | 928 B / 51720 B (**56× smaller**) | 5952 B / 134832 B (**23× smaller**) | **~parity**          | < 1 KB |
+| `uolt-seq`      | 1344 B / 51720 B (**38× smaller**) | 5952 B / 134832 B (**23× smaller**) | **~parity**          | < 2 KB |
 | `uolt-grep`     | 1680 B / 186824 B (**111× smaller**) | 7648 B / 153760 B (**20× smaller**) | **~parity**       | < 2 KB |
 | `uolt-find`     | 1272 B / 204264 B (**161× smaller**) | 8928 B / 171280 B (**19× smaller**) | **~parity**       | < 2 KB |
 | `uolt-sort`     | 1232 B / 105272 B (**85× smaller**) | 8888 B / 206032 B (**23× smaller**) | **~parity**       | < 2 KB |
@@ -90,7 +90,7 @@ an existing directory (mode preservation not yet supported);
 `uolt-chmod` sets permission bits from an octal or symbolic mode (`u+x`, `go-w`, `a=r`, `+X`, umask-aware);
 `uolt-ls` lists directory entries one per line (`-a` includes hidden entries; output is not
 sorted and columns/`-l` are not yet supported); `uolt-seq` prints an integer sequence
-(`seq [first [incr]] last`); `uolt-grep` prints input lines containing a fixed-string pattern
+(`seq [-s STRING] [-w] [first [incr]] last`, GNU separator semantics); `uolt-grep` prints input lines containing a fixed-string pattern
 (`-i` case-insensitive, `-v` invert, `-n` line numbers, `-c` count; like `grep -F`, no regex yet); `uolt-find`
 lists paths recursively (`-type f`/`d` filter, `-name` glob with `*`/`?`); `uolt-sort`
 sorts lines in C-locale byte order (`-r` reverse, `-n` numeric, `-u` unique; input is held in a

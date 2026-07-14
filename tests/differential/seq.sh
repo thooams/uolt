@@ -25,5 +25,21 @@ compare 100
 compare -5 5
 compare 7 7
 
+# -w equal-width padding agrees between BSD and GNU seq.
+compare -w 8 12
+compare -w 1 100
+compare -w 98 102
+compare -w -5 5
+compare -w 5 -1 -5
+
+# -s separator: GNU puts it only between numbers; BSD appends a trailing one.
+# uolt follows GNU, so only compare when the system seq is GNU.
+if "$REF" --version 2>/dev/null | grep -qi GNU; then
+    compare -s , 1 5
+    compare -s : 3 7
+    compare -s , -w 1 12
+    compare -s "; " 1 4
+fi
+
 [ "$fail" -eq 0 ] && echo "PASS differential/seq (ref: $REF)"
 exit "$fail"

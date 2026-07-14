@@ -12,6 +12,7 @@ fail=0
 cd "$tmp" || exit 1
 
 mkdir -p a/b/c d; touch a/f1 a/b/f2 a/b/c/f3 d/f4 top; ln -s top slink
+touch a/note.txt a/b/data.log readme.txt x.log a/b/c/deep.txt
 
 compare() {
     desc=$1; shift
@@ -26,6 +27,12 @@ compare "-type f"    . -type f
 compare "-type d"    . -type d
 compare "sub -type f" a -type f
 compare "two starts" a d
+compare "-name txt"  . -name '*.txt'
+compare "-name ?"    . -name '?.txt' 2>/dev/null || true
+compare "-name log"  . -name '*.log'
+compare "-name none" . -name 'nomatch*'
+compare "type+name"  . -type f -name 'f*'
+compare "name f4"    . -name 'f4'
 
 [ "$fail" -eq 0 ] && echo "PASS differential/find (ref: $REF)"
 exit "$fail"

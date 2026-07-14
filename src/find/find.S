@@ -26,24 +26,30 @@
 .set PATHMAX,  4096
 .set DBUFSZ,   4096
 
+.set LOC_NAME, -48              // -name glob pattern (0 = none)
+
 .text
 .globl uolt_main
 uolt_main:
+    push    rbp
+    mov     rbp, rsp
     push    rbx
     push    r12
     push    r13
     push    r14
     push    r15
-    sub     rsp, PATHMAX + 16
+    sub     rsp, PATHMAX + 32
     mov     r15, rsp
     xor     r14, r14                    // type filter (0 = any)
+    mov     qword ptr [rbp + LOC_NAME], 0       // -name pattern (0 = none)
 
     mov     r12, rdi
     dec     r12                         // operand count
     lea     r13, [rsi + 8]
 
-    // First pass: pull out a trailing "-type f|d" (v1 accepts it anywhere it can
-    // find it, as the last two operands).
+    // Strip trailing "-type f|d" and "-name PATTERN" predicates (any order), so
+    // the remaining leading operands are the start paths.
+.strip:
     cmp     r12, 2
     jl      .paths
     mov     rax, [r13 + r12*8 - 16]     // second-to-last operand
@@ -51,18 +57,31 @@ uolt_main:
     mov     rsi, rax
     call    .streq
     test    rax, rax
-    jz      .paths
+    jnz     .strip_type
+    lea     rdi, [rip + opt_name]
+    mov     rsi, [r13 + r12*8 - 16]
+    call    .streq
+    test    rax, rax
+    jnz     .strip_name
+    jmp     .paths
+.strip_type:
     mov     rax, [r13 + r12*8 - 8]      // last operand: f or d
     movzx   rcx, byte ptr [rax]
     cmp     cl, 'f'
     je      1f
     cmp     cl, 'd'
-    jne     .paths                      // unknown type -> treat as a path
+    jne     .paths
 1:
     cmp     byte ptr [rax + 1], 0
     jne     .paths
-    mov     r14, rcx                    // type filter
-    sub     r12, 2                      // drop "-type X" from the operands
+    mov     r14, rcx
+    sub     r12, 2
+    jmp     .strip
+.strip_name:
+    mov     rax, [r13 + r12*8 - 8]      // the glob pattern
+    mov     [rbp + LOC_NAME], rax
+    sub     r12, 2
+    jmp     .strip
 
 .paths:
     test    r12, r12
@@ -88,12 +107,13 @@ uolt_main:
 
 .fin:
     xor     eax, eax
-    add     rsp, PATHMAX + 16
+    add     rsp, PATHMAX + 32
     pop     r15
     pop     r14
     pop     r13
     pop     r12
     pop     rbx
+    pop     rbp
     ret
 
 // find_entry(rdi = path length, rsi = d_type hint): print the path (if it passes
@@ -205,9 +225,28 @@ find_entry:
 // rbx) unless the -type filter rejects it. Preserves rbx/r12/r14/r15.
 print_cur:
     test    r14, r14
-    jz      .pc_go
+    jz      .pc_name
     cmp     r14b, dl
     jne     .pc_skip
+.pc_name:
+    // -name: match the glob against the path's basename
+    mov     rax, [rbp + LOC_NAME]
+    test    rax, rax
+    jz      .pc_go
+    mov     rcx, rbx                    // scan back for the last '/'
+    lea     rsi, [r15]                  // default basename = whole path
+.pc_bn:
+    test    rcx, rcx
+    jz      .pc_haveb
+    dec     rcx
+    cmp     byte ptr [r15 + rcx], '/'
+    jne     .pc_bn
+    lea     rsi, [r15 + rcx + 1]
+.pc_haveb:
+    mov     rdi, rax                    // pattern
+    call    glob
+    test    rax, rax
+    jz      .pc_skip
 .pc_go:
     mov     rdi, STDOUT
     mov     rsi, r15
@@ -251,5 +290,53 @@ print_cur:
     xor     rax, rax
     ret
 
+// glob(rdi = pattern, rsi = string) -> rax = 1 if the pattern matches the whole
+// string. Supports '*' (any run) and '?' (any single char); no character classes.
+// Preserves rbx/r12/r13/r14/r15.
+glob:
+    xor     r8, r8                      // star pattern position (0 = none)
+    xor     r9, r9                      // star string position
+.gl:
+    movzx   eax, byte ptr [rdi]
+    test    al, al
+    jz      .gl_pend
+    cmp     al, '*'
+    jne     .gl_lit
+    inc     rdi
+    mov     r8, rdi                     // remember position after '*'
+    mov     r9, rsi
+    jmp     .gl
+.gl_lit:
+    movzx   ecx, byte ptr [rsi]
+    test    cl, cl
+    jz      .gl_bt
+    cmp     al, '?'
+    je      .gl_adv
+    cmp     al, cl
+    jne     .gl_bt
+.gl_adv:
+    inc     rdi
+    inc     rsi
+    jmp     .gl
+.gl_pend:
+    cmp     byte ptr [rsi], 0
+    je      .gl_yes
+.gl_bt:
+    test    r8, r8
+    jz      .gl_no
+    cmp     byte ptr [r9], 0            // no more string for '*' to absorb
+    je      .gl_no
+    mov     rdi, r8
+    inc     r9
+    mov     rsi, r9
+    jmp     .gl
+.gl_yes:
+    mov     rax, 1
+    ret
+.gl_no:
+    xor     rax, rax
+    ret
+
 nl_char:  .byte  0x0a
 opt_type: .asciz "-type"
+opt_name: .asciz "-name"

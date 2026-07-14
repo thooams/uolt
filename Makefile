@@ -117,7 +117,7 @@ EXTRA_comm     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S
 TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls seq grep find sort tee uniq env cut tr comm
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
-.PHONY: all test bench clean
+.PHONY: all test bench clean install uninstall
 all: $(TOOLBINS)
 
 # One explicit rule per tool (robust across make versions). Each links its own
@@ -228,6 +228,31 @@ test: all
 
 bench: all
 	@sh bench/run.sh
+
+# Shadow the system coreutils without touching /usr/bin: symlink each tool into
+# $(PREFIX)/bin under its bare name (uolt-cat -> cat). Put $(PREFIX)/bin ahead of
+# /usr/bin in PATH to activate, remove it to deactivate - fully reversible. Never
+# install into /usr/bin: these are POSIX subsets (no GNU flags) with documented
+# bounds (sort caps at 1 MB, ls unsorted, tail/pipe caps at 64 KB), so they are a
+# shadow for interactive/test use, not a system-wide coreutils replacement.
+PREFIX ?= $(HOME)/.local
+install: all
+	@mkdir -p $(PREFIX)/bin
+	@for t in $(TOOLNAMES); do \
+	  ln -sf $(abspath $(BUILD))/uolt-$$t $(PREFIX)/bin/$$t; \
+	  echo "  $(PREFIX)/bin/$$t -> uolt-$$t"; \
+	done
+	@echo "Installed $(words $(TOOLNAMES)) tools. Add to PATH: export PATH=\"$(PREFIX)/bin:$$PATH\""
+
+# Remove only the symlinks we own, and only if they still point at our binaries -
+# never delete a real file a user may have placed there.
+uninstall:
+	@for t in $(TOOLNAMES); do \
+	  l=$(PREFIX)/bin/$$t; \
+	  if [ -L "$$l" ] && [ "$$(readlink "$$l")" = "$(abspath $(BUILD))/uolt-$$t" ]; then \
+	    rm -f "$$l"; echo "  removed $$l"; \
+	  fi; \
+	done
 
 clean:
 	rm -rf $(BUILD)

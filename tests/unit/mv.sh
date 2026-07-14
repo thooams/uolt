@@ -20,6 +20,18 @@ printf 'new\n' >c; printf 'old\n' >d
 mkdir dir
 "$BIN" dir dir2; { [ $? -eq 0 ] && [ -d dir2 ] && [ ! -e dir ]; } || { echo "FAIL unit: rename dir"; fail=1; }
 
+# Move into a directory: dst is an existing directory -> dst/basename(src).
+mkdir into; printf 'p\n' >p
+"$BIN" p into; { [ $? -eq 0 ] && [ ! -e p ] && [ "$(cat into/p)" = "p" ]; } || { echo "FAIL unit: into-dir"; fail=1; }
+
+# Multiple sources into a directory.
+printf '1\n' >s1; printf '2\n' >s2
+"$BIN" s1 s2 into; { [ "$(cat into/s1)" = "1" ] && [ "$(cat into/s2)" = "2" ] && [ ! -e s1 ] && [ ! -e s2 ]; } || { echo "FAIL unit: multi into-dir"; fail=1; }
+
+# Source with a slash: only the basename is used inside the directory.
+mkdir sub; printf 'q\n' >sub/q
+"$BIN" sub/q into; { [ "$(cat into/q)" = "q" ] && [ ! -e sub/q ]; } || { echo "FAIL unit: into-dir basename"; fail=1; }
+
 # Missing source.
 "$BIN" nope dest 2>/dev/null; [ $? -ne 0 ] || { echo "FAIL unit: missing source exit 0"; fail=1; }
 

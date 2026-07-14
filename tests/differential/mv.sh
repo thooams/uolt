@@ -1,7 +1,7 @@
 #!/bin/sh
 # Differential test: uolt-mv agrees with the system mv on exit status and the
-# resulting tree, for the two-operand rename form (no directory targets, which
-# are out of scope in v1).
+# resulting tree, for the two-operand rename form and the "into a directory"
+# form (final operand is an existing directory).
 set -u
 BIN=${UOLT_MV:-${BUILD:-./build}/uolt-mv}
 case "$BIN" in /*) ;; *) BIN="$PWD/${BIN#./}";; esac
@@ -25,6 +25,10 @@ compare "overwrite"   "printf n >a; printf o >b"     a b
 compare "rename dir"  "mkdir d"                      d e
 compare "missing"     "true"                         nope dest
 compare "symlink"     "printf x >t; ln -s t l"       l m
+compare "into-dir"    "printf a >f; mkdir d"         f d
+compare "multi-dir"   "printf 1 >a; printf 2 >b; mkdir d"  a b d
+compare "slash-dir"   "mkdir s; printf x >s/q; mkdir d"    s/q d
+compare "into-missing" "printf a >f"                 f d
 
 [ "$fail" -eq 0 ] && echo "PASS differential/mv (ref: $REF)"
 exit "$fail"

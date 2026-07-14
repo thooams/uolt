@@ -35,6 +35,10 @@ compare "existing hard" "echo a >s; echo b >h" s h
 compare "force sym"     "echo a >s; echo b >l" -sf s l
 compare "missing src"   "true"                 nope dest
 compare "sym to missing" "true"                -s nope dest
+compare "hard into-dir" "echo a >s; mkdir d"   s d
+compare "sym into-dir"  "echo a >s; mkdir d"   -s s d
+compare "multi into-dir" "echo a >x; echo b >y; mkdir d"  x y d
+compare "slash into-dir" "mkdir sub d; echo a >sub/q"     sub/q d
 
 [ "$fail" -eq 0 ] && echo "PASS differential/ln (ref: $REF)"
 exit "$fail"

@@ -28,6 +28,14 @@ printf 'other\n' >src2
 mkdir sub; printf 'x\n' >sub/leaf
 "$BIN" sub/leaf; { [ -f leaf ] && [ leaf -ef sub/leaf ]; } || { echo "FAIL unit: implicit basename"; fail=1; }
 
+# Link into an existing directory: dst is a dir -> dir/basename(src).
+mkdir intod; printf 'p\n' >pp
+"$BIN" pp intod; { [ -f intod/pp ] && [ intod/pp -ef pp ]; } || { echo "FAIL unit: into-dir hard"; fail=1; }
+printf '1' >i1; printf '2' >i2; "$BIN" i1 i2 intod
+{ [ intod/i1 -ef i1 ] && [ intod/i2 -ef i2 ]; } || { echo "FAIL unit: multi into-dir"; fail=1; }
+"$BIN" -s pp intod2 2>/dev/null; mkdir intos; "$BIN" -s pp intos
+{ [ -L intos/pp ] && [ "$(readlink intos/pp)" = pp ]; } || { echo "FAIL unit: into-dir sym"; fail=1; }
+
 # Hard link to a missing source is an error.
 "$BIN" nope dest 2>/dev/null; [ $? -ne 0 ] || { echo "FAIL unit: missing source exit 0"; fail=1; }
 

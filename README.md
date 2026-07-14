@@ -46,7 +46,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-mkdir`    | 856 B / 76296 B (**89× smaller**) | 5728 B / 101472 B (**18× smaller**) | **~parity**          | < 1 KB |
 | `uolt-rmdir`    | 848 B / 47528 B (**56× smaller**) | 5720 B / 101120 B (**18× smaller**) | **~parity**          | < 1 KB |
 | `uolt-touch`    | 912 B / 96776 B (**106× smaller**) | 6248 B / 101792 B (**16× smaller**) | **~parity**         | < 1 KB |
-| `uolt-ln`       | 904 B / 55816 B (**62× smaller**) | 6192 B / 102192 B (**17× smaller**) | **~parity**          | < 1 KB |
+| `uolt-ln`       | 1176 B / 55816 B (**47× smaller**) | 6192 B / 102192 B (**17× smaller**) | **~parity**          | < 2 KB |
 | `uolt-rm`       | 1232 B / 59912 B (**49× smaller**) | 8208 B / 119184 B (**15× smaller**) | **~parity**         | < 2 KB |
 | `uolt-mv`       | 992 B / 137752 B (**139× smaller**) | 5432 B / 119440 B (**22× smaller**) | **~parity**        | < 1 KB |
 | `uolt-cp`       | 1816 B / 141848 B (**78× smaller**) | 6320 B / 153360 B (**24× smaller**) | **~parity**        | < 2 KB |
@@ -81,7 +81,8 @@ suspends for the sum of its time operands (decimal seconds with an optional `s`/
 suffix); `uolt-mkdir` creates directories (`-p` makes parents and is idempotent); `uolt-rmdir` removes
 empty directories (`-p` removes the ancestor chain); `uolt-touch` creates missing files and
 updates timestamps to now (`-c` skips creation); `uolt-ln` creates hard links (or symbolic with
-`-s`, replacing an existing target with `-f`); `uolt-rm` removes files and, with `-r`,
+`-s`, replacing an existing target with `-f`, and links one or more sources into a
+directory when the final operand is one); `uolt-rm` removes files and, with `-r`,
 directory trees (`-f` ignores missing operands); `uolt-mv` renames a source to a target, or moves one or more sources into a directory
 (final operand being an existing directory); `uolt-cp` copies a file to a
 target, and with `-r` copies a directory tree, or copies one or more sources into

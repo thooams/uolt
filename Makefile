@@ -78,8 +78,10 @@ EXTRA_touch    := libuolt/strlen.S libuolt/write.S libuolt/close.S \
                   libuolt/create.S libuolt/utimes.S $(SYSDIR)/write.S \
                   $(SYSDIR)/close.S $(SYSDIR)/create.S $(SYSDIR)/utimes.S
 EXTRA_ln       := libuolt/strlen.S libuolt/write.S libuolt/link.S \
-                  libuolt/symlink.S libuolt/unlink.S $(SYSDIR)/write.S \
-                  $(SYSDIR)/link.S $(SYSDIR)/symlink.S $(SYSDIR)/unlink.S
+                  libuolt/symlink.S libuolt/unlink.S libuolt/statmode.S \
+                  $(SYSDIR)/write.S \
+                  $(SYSDIR)/link.S $(SYSDIR)/symlink.S $(SYSDIR)/unlink.S \
+                  $(SYSDIR)/statmode.S
 EXTRA_rm       := libuolt/strlen.S libuolt/write.S libuolt/unlink.S \
                   libuolt/opendir.S libuolt/getdents.S libuolt/close.S libuolt/rmdir.S \
                   $(SYSDIR)/write.S $(SYSDIR)/unlink.S $(SYSDIR)/opendir.S \

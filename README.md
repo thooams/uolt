@@ -55,7 +55,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-seq`      | 928 B / 51720 B (**56× smaller**) | 5952 B / 134832 B (**23× smaller**) | **~parity**          | < 1 KB |
 | `uolt-grep`     | 1448 B / 186824 B (**129× smaller**) | 7648 B / 153760 B (**20× smaller**) | **~parity**       | < 2 KB |
 | `uolt-find`     | 1072 B / 204264 B (**190× smaller**) | 8928 B / 171280 B (**19× smaller**) | **~parity**       | < 2 KB |
-| `uolt-sort`     | 1016 B / 105272 B (**104× smaller**) | 8888 B / 206032 B (**23× smaller**) | **~parity**       | < 2 KB |
+| `uolt-sort`     | 1232 B / 105272 B (**85× smaller**) | 8888 B / 206032 B (**23× smaller**) | **~parity**       | < 2 KB |
 | `uolt-tee`      | 960 B / 39432 B (**41× smaller**) | 9408 B / 101232 B (**11× smaller**) | **~parity**          | < 1 KB |
 | `uolt-uniq`     | 1248 B / 39432 B (**32× smaller**) | 9144 B / 102160 B (**11× smaller**) | **~parity**       | < 2 KB |
 | `uolt-env`      | 496 B / 48072 B (**97× smaller**) | 6440 B / 102368 B (**16× smaller**) | **~parity**        | < 1 KB |
@@ -90,8 +90,8 @@ sorted and columns/`-l` are not yet supported); `uolt-seq` prints an integer seq
 (`seq [first [incr]] last`); `uolt-grep` prints input lines containing a fixed-string pattern
 (`-i` case-insensitive, `-v` invert; like `grep -F`, no regular expressions yet); `uolt-find`
 lists paths recursively (`-type f`/`d` filter; `-name` glob not yet supported); `uolt-sort`
-sorts lines in C-locale byte order (`-r` reverse; input is held in a 1 MB buffer, `-n`/`-u` not
-yet supported); `uolt-tee` copies stdin to stdout and to each file (`-a` appends). `uolt-uniq` collapses adjacent duplicate lines (`-c` count, `-d` duplicated, `-u` unique). `uolt-env` prints the environment (running a command is not yet supported). `uolt-cut` selects character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges. `uolt-tr` translates or (with `-d`) deletes bytes (sets support `a-z` ranges). `uolt-comm` compares two sorted files in three columns (`-1`/`-2`/`-3` suppress columns). All ignore
+sorts lines in C-locale byte order (`-r` reverse, `-n` numeric, `-u` unique; input is held in a
+1 MB buffer); `uolt-tee` copies stdin to stdout and to each file (`-a` appends). `uolt-uniq` collapses adjacent duplicate lines (`-c` count, `-d` duplicated, `-u` unique). `uolt-env` prints the environment (running a command is not yet supported). `uolt-cut` selects character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges. `uolt-tr` translates or (with `-d`) deletes bytes (sets support `a-z` ranges). `uolt-comm` compares two sorted files in three columns (`-1`/`-2`/`-3` suppress columns). All ignore
 unrelated arguments.
 
 The `uolt-wc` speedup is large because it counts bytes in the C locale; the stock `wc` does

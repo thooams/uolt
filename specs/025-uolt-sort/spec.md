@@ -2,7 +2,7 @@
 
 **Feature Branch**: `025-uolt-sort` (built on `main`)  
 **Created**: 2026-07-13  
-**Status**: Implemented (lexicographic + -r)  
+**Status**: Implemented (lexicographic, -r, -n, -u)  
 **Input**: User description: "sort"
 
 ## User Scenarios & Testing *(mandatory)*

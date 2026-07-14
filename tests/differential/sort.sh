@@ -17,6 +17,13 @@ cmp -s "$tmp/u" "$tmp/r" || { echo "FAIL diff: default"; fail=1; }
 "$BIN" -r "$tmp/a" >"$tmp/u"; LC_ALL=C "$REF" -r "$tmp/a" >"$tmp/r"
 cmp -s "$tmp/u" "$tmp/r" || { echo "FAIL diff: -r"; fail=1; }
 
+# -u and -n against a mixed numeric/text file.
+printf '10\n2\n2\n100\n1\n-5\n2\n33\n' >"$tmp/n"
+for o in -u -n -rn -nu -run; do
+    "$BIN" $o "$tmp/n" >"$tmp/u"; LC_ALL=C "$REF" $o "$tmp/n" >"$tmp/r"
+    cmp -s "$tmp/u" "$tmp/r" || { echo "FAIL diff: $o"; fail=1; }
+done
+
 # Fuzz: random line sets.
 i=0
 while [ "$i" -lt 60 ]; do

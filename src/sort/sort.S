@@ -57,21 +57,39 @@ uolt_main:
     jne     .files
     cmp     byte ptr [rax + 1], 0
     je      .files                      // "-" -> stdin operand
-    cmp     byte ptr [rax + 1], 'r'
-    jne     1f
+    cmp     byte ptr [rax + 1], '-'
+    jne     .optletters
     cmp     byte ptr [rax + 2], 0
-    jne     1f
-    mov     qword ptr [rbp - 48], 1     // -r
+    jne     .optletters
+    add     qword ptr [rbp - 56], 8     // "--"
+    dec     rbx
+    jmp     .files
+.optletters:
+    lea     r11, [rax + 1]              // combined flags: -r -n -u -rn ...
+.optf:
+    movzx   ecx, byte ptr [r11]
+    test    cl, cl
+    jz      .optdone
+    cmp     cl, 'r'
+    jne     5f
+    or      qword ptr [rbp - 48], 1
+    jmp     .optfn
+5:
+    cmp     cl, 'n'
+    jne     6f
+    or      qword ptr [rbp - 48], 2
+    jmp     .optfn
+6:
+    cmp     cl, 'u'
+    jne     .files                      // unknown letter -> treat as an operand
+    or      qword ptr [rbp - 48], 4
+.optfn:
+    inc     r11
+    jmp     .optf
+.optdone:
     add     qword ptr [rbp - 56], 8
     dec     rbx
     jmp     .opt
-1:
-    cmp     byte ptr [rax + 1], '-'
-    jne     .files
-    cmp     byte ptr [rax + 2], 0
-    jne     .files
-    add     qword ptr [rbp - 56], 8     // "--"
-    dec     rbx
 
 .files:
     test    rbx, rbx
@@ -152,8 +170,8 @@ uolt_main:
     mov     rsi, r9                     // b = key
     call    line_cmp                    // rax < 0 if a < b
     // ascending: shift while p[j] > key ; -r flips
-    cmp     qword ptr [rbp - 48], 0
-    jne     .is_rev
+    test    qword ptr [rbp - 48], 1
+    jnz     .is_rev
     test    rax, rax
     jle     .is_place                   // p[j] <= key: stop
     jmp     .is_shift
@@ -176,7 +194,19 @@ uolt_main:
     cmp     rbx, r14
     jae     .fin
     mov     rdi, [r15 + rbx*8]
+    test    qword ptr [rbp - 48], 4     // -u: drop lines equal to the previous
+    jz      .em_print
+    test    rbx, rbx
+    jz      .em_print
+    mov     rdi, [r15 + rbx*8 - 8]
+    mov     rsi, [r15 + rbx*8]
+    call    line_cmp
+    test    rax, rax
+    jz      .em_skip
+    mov     rdi, [r15 + rbx*8]
+.em_print:
     call    put_line
+.em_skip:
     inc     rbx
     jmp     .em_loop
 
@@ -212,9 +242,11 @@ read_into:
     pop     rbx
     ret
 
-// line_cmp(rdi = a, rsi = b) -> rax: <0 if a<b, 0 if equal, >0 if a>b (unsigned
-// byte comparison of NUL-terminated strings).
+// line_cmp(rdi = a, rsi = b) -> rax: <0 if a<b, 0 if equal, >0 if a>b. Byte
+// comparison of NUL-terminated strings, or numeric (leading integer) under -n.
 line_cmp:
+    test    qword ptr [rbp - 48], 2     // -n: numeric compare
+    jnz     num_cmp
     xor     rcx, rcx
 1:
     movzx   eax, byte ptr [rdi + rcx]
@@ -231,6 +263,67 @@ line_cmp:
     ret
 3:
     xor     eax, eax
+    ret
+
+// num_cmp(rdi = a, rsi = b) -> rax: compare the leading integers of two lines.
+// Preserves rbx and r8/r9 (the insertion-sort registers); uses r10/r11.
+num_cmp:
+    mov     r11, rsi                    // save b
+    call    parse_num                   // rdi = a -> rax = value
+    mov     r10, rax
+    mov     rdi, r11
+    call    parse_num                   // rax = value of b
+    cmp     r10, rax
+    jl      .nc_lt
+    jg      .nc_gt
+    xor     eax, eax
+    ret
+.nc_lt:
+    mov     rax, -1                     // full 64-bit: eax alone would zero-extend
+    ret
+.nc_gt:
+    mov     rax, 1
+    ret
+
+// parse_num(rdi = ASCIZ) -> rax: leading integer (skips blanks; optional sign;
+// non-numeric is 0). Uses rax/rcx/rdx/rdi; preserves r8-r11.
+parse_num:
+    xor     rax, rax
+    xor     rdx, rdx                    // sign
+.pn_sp:
+    movzx   ecx, byte ptr [rdi]
+    cmp     cl, ' '
+    je      .pn_adv
+    cmp     cl, 0x09
+    jne     .pn_sign
+.pn_adv:
+    inc     rdi
+    jmp     .pn_sp
+.pn_sign:
+    cmp     cl, '-'
+    jne     1f
+    mov     rdx, 1
+    inc     rdi
+    jmp     .pn_dig
+1:
+    cmp     cl, '+'
+    jne     .pn_dig
+    inc     rdi
+.pn_dig:
+    movzx   ecx, byte ptr [rdi]
+    sub     cl, '0'
+    cmp     cl, 9
+    ja      .pn_done
+    imul    rax, rax, 10
+    movzx   rcx, cl
+    add     rax, rcx
+    inc     rdi
+    jmp     .pn_dig
+.pn_done:
+    test    rdx, rdx
+    jz      2f
+    neg     rax
+2:
     ret
 
 // put_line(rdi = ASCIZ line): write the line and a newline to stdout.

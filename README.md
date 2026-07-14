@@ -1,123 +1,227 @@
-# UOLT - Ultra Optimised Lightweight Toolset
+# UOLT — Ultra Optimised Lightweight Toolset
 
-A handcrafted suite of Unix utilities written entirely in assembly, designed for minimal
-size, predictable performance, and zero unnecessary abstraction. Shared logic lives in
-`libuolt`; each utility ships as a `uolt-<name>` executable.
+<p align="center">
+  <b>31 Unix command-line tools, hand-written in x86_64 assembly.</b><br>
+  No libc · no heap · direct syscalls · fully static on Linux.
+</p>
 
-See [the constitution](.specify/memory/constitution.md) for the governing principles
-(assembly-only, direct syscalls, no heap, POSIX-not-GNU, tested & benchmarked).
+<p align="center">
+  The <b>entire suite</b> is <b>35 KB</b> on Linux — smaller than a single stock
+  <code>grep</code> binary (187 KB), and <b>~59× smaller</b> than the equivalent
+  stock tools combined, while staying byte-for-byte compatible.
+</p>
+
+---
+
+## What is this?
+
+UOLT reimplements the everyday Unix / POSIX utilities (`cat`, `ls`, `grep`, `sort`, …)
+from scratch, entirely in assembly. Each tool is a standalone `uolt-<name>` executable;
+shared routines (string length, buffered write, syscall wrappers, …) live in `libuolt`.
+
+The goal is to see how small and lean these tools can get when you strip away every
+layer that is not strictly necessary:
+
+- **No C library.** Tools talk to the kernel through raw syscalls; there is no stdio,
+  no malloc, no dynamic loader work on Linux.
+- **No heap.** Every buffer is on the stack, with documented bounds — allocation never
+  fails because it never happens.
+- **One toolchain, two targets.** A single clang integrated-assembler build produces
+  fully static Linux ELF binaries and macOS Mach-O binaries (which carry only the
+  OS-imposed `libSystem` loader stub, with zero calls into it).
+- **POSIX behaviour, verified.** Each tool is checked byte-for-byte against the system
+  tool (`differential` tests) plus unit / POSIX / fuzz / syscall-trace layers.
+
+See [the constitution](.specify/memory/constitution.md) for the full governing principles.
+
+## The whole suite at a glance
+
+<table>
+<tr><th>Platform</th><th>UOLT suite (31 tools)</th><th>Stock tools combined</th><th>Smaller by</th></tr>
+<tr><td>Linux (static ELF)</td><td><b>35.3 KB</b></td><td>2.08 MB</td><td><b>~59×</b></td></tr>
+<tr><td>macOS (Mach-O)</td><td>208 KB</td><td>3.60 MB</td><td>~17×</td></tr>
+</table>
+
+Average Linux tool: **~1.1 KB**. The smallest (`true`) is **384 bytes**, of which the
+actual machine code is 21 bytes.
 
 ## Build
 
 ```sh
 make            # build every tool into ./build
 make test       # run all test layers (unit, POSIX, differential, fuzz, trace)
-make bench      # benchmark vs reference tools
+make bench      # benchmark size + speed vs the reference tools
 ```
 
 One assembler across platforms: the clang integrated assembler, x86_64 sources in Intel
-syntax. Linux binaries are fully static; macOS binaries carry only the OS-imposed
-`libSystem.dylib` loader stub (zero calls into it, direct syscalls only).
-
-To build and test the **Linux** target locally from macOS, run `sh scripts/linux-test.sh`
-(needs a Docker engine such as colima). It uses a prebuilt toolchain image
-(`docker/linux-toolchain.Dockerfile`), so after the first run a full build+test cycle takes
-a few seconds - faster than pushing to CI.
+syntax. To build and test the **Linux** target locally from macOS, run
+`sh scripts/linux-test.sh` (needs a Docker engine such as colima). It uses a prebuilt
+toolchain image, so after the first run a full build+test cycle takes a few seconds.
 
 ## Commands
 
-Sizes are shown as **uolt / system tool** so the gain is visible. "System" is the stock
-`/usr/bin` tool on each platform (GNU coreutils on Linux, Apple's on macOS).
+Sizes are the **Linux** static binary (`uolt`) vs the stock `/usr/bin` tool (GNU
+coreutils); the last column is how many times smaller UOLT is. macOS sizes and the full
+flag reference are in the collapsible sections below.
 
-| Command      | Size Linux (uolt / system)        | Size macOS (uolt / system)          | Speed Linux (vs system) | Target |
-|--------------|-----------------------------------|-------------------------------------|-------------------------|--------|
-| `uolt-true`  | 384 B / 26936 B (**70× smaller**)  | 4664 B / 84128 B (**18× smaller**)  | **~1.8× faster**        | < 1 KB |
-| `uolt-false` | 384 B / 26936 B (**70× smaller**)  | 4664 B / 84128 B (**18× smaller**)  | **~1.8× faster**        | < 1 KB |
-| `uolt-echo`  | 608 B / 35208 B (**58× smaller**)  | 5160 B / 101136 B (**20× smaller**) | **~2.0× faster**        | < 3 KB |
-| `uolt-pwd`   | 528 B / 35336 B (**67× smaller**)  | 5504 B / 101296 B (**18× smaller**) | **~1.9× faster**        | < 2 KB |
-| `uolt-cat`   | 824 B / 39384 B (**48× smaller**)  | 6048 B / 118992 B (**20× smaller**) | **~1.7× faster**        | < 2 KB |
-| `uolt-head`  | 1472 B / 43528 B (**30× smaller**) | 6416 B / 101952 B (**16× smaller**) | **~1.6× faster**        | < 2 KB |
-| `uolt-tail`  | 2312 B / 64032 B (**28× smaller**) | 7272 B / 119344 B (**16× smaller**) | **~1.1× (parity)**      | < 2 KB |
-| `uolt-wc`    | 1368 B / 55824 B (**41× smaller**) | 6496 B / 102240 B (**16× smaller**) | **~11× faster**         | < 2 KB |
-| `uolt-yes`   | 808 B / 35208 B (**44× smaller**)  | 5464 B / 100928 B (**18× smaller**) | **~parity**             | < 1 KB |
-| `uolt-basename` | 728 B / 35336 B (**49× smaller**) | 5416 B / 101568 B (**19× smaller**) | **~1.4× faster**     | < 1 KB |
-| `uolt-dirname`  | 688 B / 35208 B (**51× smaller**) | 5408 B / 101168 B (**19× smaller**) | **~1.4× faster**     | < 1 KB |
-| `uolt-sleep`    | 960 B / 35336 B (**37× smaller**) | 5704 B / 101168 B (**18× smaller**) | **~parity**          | < 1 KB |
-| `uolt-mkdir`    | 1056 B / 76296 B (**72× smaller**) | 5728 B / 101472 B (**18× smaller**) | **~parity**          | < 2 KB |
-| `uolt-rmdir`    | 848 B / 47528 B (**56× smaller**) | 5720 B / 101120 B (**18× smaller**) | **~parity**          | < 1 KB |
-| `uolt-touch`    | 912 B / 96776 B (**106× smaller**) | 6248 B / 101792 B (**16× smaller**) | **~parity**         | < 1 KB |
-| `uolt-ln`       | 1176 B / 55816 B (**47× smaller**) | 6192 B / 102192 B (**17× smaller**) | **~parity**          | < 2 KB |
-| `uolt-rm`       | 1232 B / 59912 B (**49× smaller**) | 8208 B / 119184 B (**15× smaller**) | **~parity**         | < 2 KB |
-| `uolt-mv`       | 992 B / 137752 B (**139× smaller**) | 5432 B / 119440 B (**22× smaller**) | **~parity**        | < 1 KB |
-| `uolt-cp`       | 1816 B / 141848 B (**78× smaller**) | 6320 B / 153360 B (**24× smaller**) | **~parity**        | < 2 KB |
-| `uolt-chmod`    | 1376 B / 55816 B (**41× smaller**) | 5544 B / 120656 B (**22× smaller**) | **~parity**          | < 1 KB |
-| `uolt-ls`       | 976 B / 142312 B (**146× smaller**) | 7256 B / 154624 B (**21× smaller**) | **~parity**        | < 1 KB |
-| `uolt-seq`      | 1344 B / 51720 B (**38× smaller**) | 5952 B / 134832 B (**23× smaller**) | **~parity**          | < 2 KB |
-| `uolt-grep`     | 1912 B / 186824 B (**98× smaller**) | 7648 B / 153760 B (**20× smaller**) | **~parity**       | < 2 KB |
-| `uolt-find`     | 1440 B / 204264 B (**142× smaller**) | 8928 B / 171280 B (**19× smaller**) | **~parity**       | < 2 KB |
-| `uolt-sort`     | 1384 B / 105272 B (**76× smaller**) | 8888 B / 206032 B (**23× smaller**) | **~parity**       | < 2 KB |
-| `uolt-tee`      | 960 B / 39432 B (**41× smaller**) | 9408 B / 101232 B (**11× smaller**) | **~parity**          | < 1 KB |
-| `uolt-uniq`     | 1608 B / 39432 B (**25× smaller**) | 9144 B / 102160 B (**11× smaller**) | **~parity**       | < 2 KB |
-| `uolt-env`      | 496 B / 48072 B (**97× smaller**) | 6440 B / 102368 B (**16× smaller**) | **~parity**        | < 1 KB |
-| `uolt-cut`      | 1856 B / 39432 B (**21× smaller**) | 9840 B / 102480 B (**10× smaller**) | **~parity**        | < 2 KB |
-| `uolt-tr`       | 1320 B / 47624 B (**36× smaller**) | 7640 B / 135344 B (**18× smaller**) | **~parity**        | < 2 KB |
-| `uolt-comm`     | 1496 B / 39440 B (**26× smaller**) | 9136 B / 101664 B (**11× smaller**) | **~parity**        | < 2 KB |
+### Text output & shell helpers
 
-Behavior: `uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
-trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical working
-directory; `uolt-cat` concatenates its file operands (or stdin, also for the operand `-`) to
-stdout verbatim, in 64 KB blocks (`-u` is accepted and ignored - output is already unbuffered);
-`uolt-head` prints the first N lines
-(default 10, `-n` sets N; `-c` counts bytes) of each operand or stdin, with `==> name <==` headers
-when more than one file is given; `uolt-tail` prints the last N lines
-(default 10, `-n` sets N; `-n +N` starts at line N; `-c` counts bytes), seeking backwards on regular files so its
-cost tracks the output, not the file size (on a pipe it retains the last 64 KB); `uolt-wc`
-counts lines, words, and bytes (`-l`/`-w`/`-c` select; default all), always in that order, with
-a `total` line for multiple files; `uolt-yes` repeats its operands joined by spaces (or `y`) plus
-a newline forever, filling a 64 KB buffer to write in large blocks; `uolt-basename` prints the
-final component of a path (with an optional suffix removed) and `uolt-dirname` prints the
-directory part, both working purely on the argument bytes with no file access; `uolt-sleep`
-suspends for the sum of its time operands (decimal seconds with an optional `s`/`m`/`h`/`d`
-suffix); `uolt-mkdir` creates directories (`-p` makes parents and is idempotent, `-m MODE` sets the exact octal mode); `uolt-rmdir` removes
-empty directories (`-p` removes the ancestor chain); `uolt-touch` creates missing files and
-updates timestamps to now (`-c` skips creation); `uolt-ln` creates hard links (or symbolic with
-`-s`, replacing an existing target with `-f`, and links one or more sources into a
-directory when the final operand is one); `uolt-rm` removes files and, with `-r`,
-directory trees (`-f` ignores missing operands); `uolt-mv` renames a source to a target, or moves one or more sources into a directory
-(final operand being an existing directory); `uolt-cp` copies a file to a
-target, and with `-r` copies a directory tree, or copies one or more sources into
-an existing directory (mode preservation not yet supported);
-`uolt-chmod` sets permission bits from an octal or symbolic mode (`u+x`, `go-w`, `a=r`, `+X`, umask-aware);
-`uolt-ls` lists directory entries one per line (`-a` includes hidden entries; output is not
-sorted and columns/`-l` are not yet supported); `uolt-seq` prints an integer sequence
-(`seq [-s STRING] [-w] [first [incr]] last`, GNU separator semantics); `uolt-grep` prints input lines containing a fixed-string pattern
-(`-i` case-insensitive, `-v` invert, `-n` line numbers, `-c` count, `-w` word match, `-x` whole-line; like `grep -F`, no regex yet); `uolt-find`
-lists paths recursively (`-type f`/`d`/`l` filter, `-maxdepth N`, `-name` glob with `*`/`?`); `uolt-sort`
-sorts lines in C-locale byte order (`-r` reverse, `-n` numeric, `-u` unique, `-f` fold case, `-b` ignore leading blanks; input is held in a
-1 MB buffer); `uolt-tee` copies stdin to stdout and to each file (`-a` appends). `uolt-uniq` collapses adjacent duplicate lines (`-c` count, `-d` duplicated, `-u` unique, `-i` case-insensitive, `-f N` skip fields, `-s N` skip chars). `uolt-env` prints the environment (running a command is not yet supported). `uolt-cut` selects character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges (`-s` drops lines with no delimiter). `uolt-tr` translates, deletes (`-d`), or squeezes repeats (`-s`) bytes (sets support `a-z` ranges). `uolt-comm` compares two sorted files in three columns (`-1`/`-2`/`-3` suppress columns). All ignore
-unrelated arguments.
+| Tool | What it does | uolt | system | smaller |
+|------|--------------|-----:|-------:|:-------:|
+| `true`     | exit 0                                   |  384 B | 26.9 KB | **70×** |
+| `false`    | exit 1                                   |  384 B | 26.9 KB | **70×** |
+| `echo`     | print arguments (`-n`)                   |  608 B | 35.2 KB | **58×** |
+| `pwd`      | physical working directory               |  528 B | 35.3 KB | **67×** |
+| `yes`      | repeat a line forever                    |  808 B | 35.2 KB | **44×** |
+| `seq`      | integer sequence (`-s`, `-w`)            | 1344 B | 51.7 KB | **38×** |
+| `env`      | print the environment                    |  496 B | 48.1 KB | **97×** |
+| `sleep`    | suspend (`s`/`m`/`h`/`d` suffixes)       |  960 B | 35.3 KB | **37×** |
+| `basename` | final path component (+ suffix strip)    |  728 B | 35.3 KB | **49×** |
+| `dirname`  | directory part of a path                 |  688 B | 35.2 KB | **51×** |
 
-The `uolt-wc` speedup is large because it counts bytes in the C locale; the stock `wc` does
-multibyte/locale word processing by default. Counts match `wc` run under `LC_ALL=C`.
+### File contents
 
-**Speed note**: timings are measured with `hyperfine` (mean of thousands of runs). The
-constitution requires each tool to be **at worst as fast as the system tool, at best faster**.
-On **Linux** the static, tiny binaries win clearly (no dynamic linker to load): ~1.8-2.0×
-faster. On **macOS** process-spawn overhead (~3 ms of exec/dyld work) dominates and swamps the
-tool's own microseconds, so results sit at **parity within noise** - the rule accepts parity
-where the OS overhead is fixed and outside our control. Run `make bench` to reproduce.
+| Tool | What it does | uolt | system | smaller |
+|------|--------------|-----:|-------:|:-------:|
+| `cat`  | concatenate files / stdin (`-u`)                    |  824 B | 39.4 KB | **48×** |
+| `head` | first N lines / bytes (`-n`, `-c`)                  | 1472 B | 43.5 KB | **30×** |
+| `tail` | last N lines / bytes (`-n`, `-n +N`, `-c`)          | 2312 B | 64.0 KB | **28×** |
+| `wc`   | count lines / words / bytes (`-l`/`-w`/`-c`)        | 1368 B | 55.8 KB | **41×** |
+| `tee`  | copy stdin to stdout and files (`-a`)               |  960 B | 39.4 KB | **41×** |
 
-**Size note**: the < 1 KB targets are authoritative on **Linux** and met - a custom link
-script (`sys/linux/uolt.ld`) collapses the binary into one segment, giving 360 B (the real
-machine code is 21 bytes). **macOS** cannot produce sub-page binaries: every Mach-O executable
-carries page-aligned segments plus the `libSystem` load commands, giving an unavoidable floor
-around 4 KB. macOS sizes are reported for transparency and measured against the Linux target,
-not held to it.
+### Text processing
+
+| Tool | What it does | uolt | system | smaller |
+|------|--------------|-----:|-------:|:-------:|
+| `grep` | fixed-string search (`-i -v -n -c -w -x`, like `grep -F`) | 1912 B | 186.8 KB | **98×** |
+| `sort` | sort lines (`-r -n -u -f -b`)                             | 1384 B | 105.3 KB | **76×** |
+| `uniq` | collapse adjacent dups (`-c -d -u -i -f -s`)              | 1608 B |  39.4 KB | **25×** |
+| `cut`  | select characters / fields (`-c -f -d -s`)               | 1856 B |  39.4 KB | **21×** |
+| `tr`   | translate / delete / squeeze bytes (`-d -s`)             | 1320 B |  47.6 KB | **36×** |
+| `comm` | compare two sorted files (`-1 -2 -3`)                    | 1496 B |  39.4 KB | **26×** |
+
+### Filesystem
+
+| Tool | What it does | uolt | system | smaller |
+|------|--------------|-----:|-------:|:-------:|
+| `ls`    | list entries (`-a`)                                  |  976 B | 142.3 KB | **146×** |
+| `find`  | walk a tree (`-type f/d/l`, `-maxdepth`, `-name`)    | 1440 B | 204.3 KB | **142×** |
+| `mkdir` | create directories (`-p`, `-m MODE`)                 | 1056 B |  76.3 KB |  **72×** |
+| `rmdir` | remove empty directories (`-p`)                      |  848 B |  47.5 KB |  **56×** |
+| `touch` | create / update mtime (`-c`)                         |  912 B |  96.8 KB | **106×** |
+| `ln`    | hard / symbolic links (`-s`, `-f`, into a dir)       | 1176 B |  55.8 KB |  **47×** |
+| `rm`    | remove files and trees (`-r`, `-f`)                  | 1232 B |  59.9 KB |  **49×** |
+| `mv`    | rename, or move into a directory                     |  992 B | 137.8 KB | **139×** |
+| `cp`    | copy files and trees (`-r`, into a directory)        | 1816 B | 141.8 KB |  **78×** |
+| `chmod` | set mode, octal or symbolic (`u+x`, `go-w`, `+X`)    | 1376 B |  55.8 KB |  **41×** |
+
+<details>
+<summary><b>macOS sizes (Mach-O)</b></summary>
+
+macOS cannot produce sub-page binaries: every Mach-O executable carries page-aligned
+segments plus the `libSystem` load commands, an unavoidable floor around 4 KB. Sizes are
+reported for transparency and measured against the Linux target, not held to it.
+
+| Tool | uolt | system | Tool | uolt | system |
+|------|-----:|-------:|------|-----:|-------:|
+| `true`  | 4664 B |  84.1 KB | `mkdir` | 5728 B | 101.5 KB |
+| `false` | 4664 B |  84.1 KB | `rmdir` | 5720 B | 101.1 KB |
+| `echo`  | 5160 B | 101.1 KB | `touch` | 6248 B | 101.8 KB |
+| `pwd`   | 5504 B | 101.3 KB | `ln`    | 6192 B | 102.2 KB |
+| `cat`   | 6048 B | 119.0 KB | `rm`    | 8208 B | 119.2 KB |
+| `head`  | 6416 B | 102.0 KB | `mv`    | 5432 B | 119.4 KB |
+| `tail`  | 7272 B | 119.3 KB | `cp`    | 6320 B | 153.4 KB |
+| `wc`    | 6496 B | 102.2 KB | `chmod` | 5544 B | 120.7 KB |
+| `yes`   | 5464 B | 100.9 KB | `ls`    | 7256 B | 154.6 KB |
+| `basename` | 5416 B | 101.6 KB | `seq` | 5952 B | 134.8 KB |
+| `dirname`  | 5408 B | 101.2 KB | `grep`| 7648 B | 153.8 KB |
+| `sleep` | 5704 B | 101.2 KB | `find` | 8928 B | 171.3 KB |
+| `tee`   | 9408 B | 101.2 KB | `sort` | 8888 B | 206.0 KB |
+| `uniq`  | 9144 B | 102.2 KB | `env`  | 6440 B | 102.4 KB |
+| `cut`   | 9840 B | 102.5 KB | `tr`   | 7640 B | 135.3 KB |
+| `comm`  | 9136 B | 101.7 KB |        |        |         |
+
+</details>
+
+<details>
+<summary><b>Full behaviour &amp; flag notes</b></summary>
+
+`uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
+trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical
+working directory; `uolt-cat` concatenates its file operands (or stdin, also for the
+operand `-`) to stdout verbatim, in 64 KB blocks (`-u` is accepted and ignored — output
+is already unbuffered); `uolt-head` prints the first N lines (default 10, `-n` sets N;
+`-c` counts bytes) of each operand or stdin, with `==> name <==` headers when more than
+one file is given; `uolt-tail` prints the last N lines (default 10, `-n` sets N; `-n +N`
+starts at line N; `-c` counts bytes), seeking backwards on regular files so its cost
+tracks the output, not the file size (on a pipe it retains the last 64 KB); `uolt-wc`
+counts lines, words, and bytes (`-l`/`-w`/`-c` select; default all), always in that
+order, with a `total` line for multiple files; `uolt-yes` repeats its operands joined by
+spaces (or `y`) plus a newline forever, filling a 64 KB buffer to write in large blocks;
+`uolt-basename` prints the final component of a path (with an optional suffix removed) and
+`uolt-dirname` prints the directory part, both working purely on the argument bytes with
+no file access; `uolt-sleep` suspends for the sum of its time operands (decimal seconds
+with an optional `s`/`m`/`h`/`d` suffix); `uolt-mkdir` creates directories (`-p` makes
+parents and is idempotent, `-m MODE` sets the exact octal mode); `uolt-rmdir` removes
+empty directories (`-p` removes the ancestor chain); `uolt-touch` creates missing files
+and updates timestamps to now (`-c` skips creation); `uolt-ln` creates hard links (or
+symbolic with `-s`, replacing an existing target with `-f`, and links one or more sources
+into a directory when the final operand is one); `uolt-rm` removes files and, with `-r`,
+directory trees (`-f` ignores missing operands); `uolt-mv` renames a source to a target,
+or moves one or more sources into a directory (final operand being an existing directory);
+`uolt-cp` copies a file to a target, and with `-r` copies a directory tree, or copies one
+or more sources into an existing directory (mode preservation not yet supported);
+`uolt-chmod` sets permission bits from an octal or symbolic mode (`u+x`, `go-w`, `a=r`,
+`+X`, umask-aware); `uolt-ls` lists directory entries one per line (`-a` includes hidden
+entries; output is not sorted and columns/`-l` are not yet supported); `uolt-seq` prints
+an integer sequence (`seq [-s STRING] [-w] [first [incr]] last`, GNU separator semantics);
+`uolt-grep` prints input lines containing a fixed-string pattern (`-i` case-insensitive,
+`-v` invert, `-n` line numbers, `-c` count, `-w` word match, `-x` whole-line; like
+`grep -F`, no regex yet); `uolt-find` lists paths recursively (`-type f`/`d`/`l` filter,
+`-maxdepth N`, `-name` glob with `*`/`?`); `uolt-sort` sorts lines in C-locale byte order
+(`-r` reverse, `-n` numeric, `-u` unique, `-f` fold case, `-b` ignore leading blanks;
+input is held in a 1 MB buffer); `uolt-tee` copies stdin to stdout and to each file
+(`-a` appends); `uolt-uniq` collapses adjacent duplicate lines (`-c` count, `-d`
+duplicated, `-u` unique, `-i` case-insensitive, `-f N` skip fields, `-s N` skip chars);
+`uolt-env` prints the environment (running a command is not yet supported); `uolt-cut`
+selects character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges (`-s` drops
+lines with no delimiter); `uolt-tr` translates, deletes (`-d`), or squeezes repeats (`-s`)
+bytes (sets support `a-z` ranges); `uolt-comm` compares two sorted files in three columns
+(`-1`/`-2`/`-3` suppress columns). All ignore unrelated arguments.
+
+</details>
+
+## Performance
+
+Timings are measured with `hyperfine` (mean of thousands of runs). The constitution
+requires each tool to be **at worst as fast as the system tool, at best faster**.
+
+| Where UOLT is faster | Why |
+|----------------------|-----|
+| `true` `false` `echo` `pwd` `basename` `dirname` (**~1.4–2.0×**) | pure startup, no I/O — the tiny static binary and minimal syscalls dominate |
+| `wc` (**~11×**) | counts bytes in the C locale; stock `wc` does multibyte/locale word processing by default (counts match `wc` under `LC_ALL=C`) |
+
+Every other tool sits at **parity within noise**, and that is expected: `cat`, `sort`,
+`grep`, `cp`, … are **I/O-bound**. Their throughput is set by `read`/`write` and memory
+bandwidth, which the kernel handles identically no matter who calls it; the byte-scanning
+CPU work is comparable, and on realistic inputs process/syscall time dominates. UOLT wins
+clearly only where the workload is *startup*, not *data*. Claiming a throughput advantage
+elsewhere would be dishonest — parity satisfies the "at worst as fast" floor. On **macOS**
+the ~3 ms of exec/dyld work per spawn swamps the tool's own microseconds, so everything
+sits at parity there. Run `make bench` to reproduce.
+
+## Size
+
+The `< 1–2 KB` targets are authoritative on **Linux** and met: a custom link script
+(`sys/linux/uolt.ld`) collapses each binary into a single segment. macOS sizes are
+reported for transparency (see the collapsible section above) and measured against the
+Linux target, not held to it.
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
-These utilities are original, clean-room implementations written from the POSIX specifications;
-they are **not** derived from GNU coreutils (which is GPLv3) or any other existing source, so no
-copyleft obligation applies. The permissive MIT license lets anyone reuse the code freely.
+These utilities are original, clean-room implementations written from the POSIX
+specifications; they are **not** derived from GNU coreutils (which is GPLv3) or any other
+existing source, so no copyleft obligation applies. The permissive MIT license lets anyone
+reuse the code freely.

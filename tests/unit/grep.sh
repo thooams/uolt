@@ -23,6 +23,13 @@ printf 'apple tart\n' >g
 got=$("$BIN" apple f g | sort | tr '\n' ',')
 [ "$got" = "f:apple,g:apple tart," ] || { echo "FAIL unit: multi prefix [$got]"; fail=1; }
 
+# -n prefixes line numbers; -c prints the match count. (f: apple@1, APPLE pie@4.)
+[ "$("$BIN" -n apple f)" = "1:apple" ]           || { echo "FAIL unit: -n"; fail=1; }
+[ "$("$BIN" -c apple f)" = "1" ]                 || { echo "FAIL unit: -c"; fail=1; }
+[ "$("$BIN" -ic apple f)" = "2" ]                || { echo "FAIL unit: -ic"; fail=1; }
+[ "$("$BIN" -c zzz f)" = "0" ]                   || { echo "FAIL unit: -c none"; fail=1; }
+[ "$("$BIN" -in apple f | tr '\n' ',')" = "1:apple,4:APPLE pie," ] || { echo "FAIL unit: -in"; fail=1; }
+
 # A final line without a trailing newline still matches.
 printf 'no-newline-apple' >h
 [ "$("$BIN" apple h)" = "no-newline-apple" ] || { echo "FAIL unit: no trailing newline"; fail=1; }

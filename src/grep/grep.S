@@ -31,6 +31,9 @@
 .set LOC_MATCH,  -80
 .set LOC_ERR,    -88
 .set LOC_CH,     -96
+.set LOC_LINENO, -104
+.set LOC_COUNT,  -112
+.set LOC_NUM,    -136
 
 .text
 .globl uolt_main
@@ -42,7 +45,7 @@ uolt_main:
     push    r13
     push    r14
     push    r15
-    sub     rsp, BUFSZ + 96
+    sub     rsp, BUFSZ + 160
     mov     r15, rsp
     mov     qword ptr [rbp + LOC_FLAGS], 0
     mov     qword ptr [rbp + LOC_MATCH], 0
@@ -72,6 +75,10 @@ uolt_main:
     je      1f
     cmp     cl, 'v'
     je      1f
+    cmp     cl, 'n'
+    je      1f
+    cmp     cl, 'c'
+    je      1f
     jmp     .have_pat               // unknown -> treat as the pattern
 1:
     inc     rdi
@@ -90,6 +97,14 @@ uolt_main:
     jne     3f
     or      qword ptr [rbp + LOC_FLAGS], 2
 3:
+    cmp     cl, 'n'
+    jne     7f
+    or      qword ptr [rbp + LOC_FLAGS], 4
+7:
+    cmp     cl, 'c'
+    jne     8f
+    or      qword ptr [rbp + LOC_FLAGS], 8
+8:
     inc     rdi
     jmp     .ap
 .apd:
@@ -176,7 +191,7 @@ uolt_main:
 .ex2:
     mov     eax, 2
 .ret:
-    add     rsp, BUFSZ + 96
+    add     rsp, BUFSZ + 160
     pop     r15
     pop     r14
     pop     r13
@@ -188,7 +203,7 @@ uolt_main:
     lea     rdi, [rip + err_usage]
     call    err_puts
     mov     eax, 2
-    add     rsp, BUFSZ + 96
+    add     rsp, BUFSZ + 160
     pop     r15
     pop     r14
     pop     r13
@@ -204,6 +219,8 @@ grep_fd:
     push    r13
     mov     r12, rdi                // fd
     xor     r13, r13                // fill (bytes held in the line buffer)
+    mov     qword ptr [rbp + LOC_LINENO], 0
+    mov     qword ptr [rbp + LOC_COUNT], 0
 .gf_read:
     mov     rdx, BUFSZ
     sub     rdx, r13
@@ -255,6 +272,21 @@ grep_fd:
     mov     rsi, r13
     call    process_line
 .gf_done:
+    test    qword ptr [rbp + LOC_FLAGS], 8      // -c: print the match count
+    jz      .gfd_ret
+    mov     rax, [rbp + LOC_NAME]
+    test    rax, rax
+    jz      .gfd_nn
+    mov     rdi, rax
+    call    put_str
+    mov     al, ':'
+    call    put_char
+.gfd_nn:
+    mov     rax, [rbp + LOC_COUNT]
+    call    put_uint
+    mov     al, 0x0a
+    call    put_char
+.gfd_ret:
     pop     r13
     pop     r12
     pop     rbx
@@ -270,6 +302,7 @@ grep_fd:
 // matches (accounting for -v), print the line with any name prefix. Preserves
 // rbx/r12/r13/r15.
 process_line:
+    inc     qword ptr [rbp + LOC_LINENO]        // count every line
     push    rdi
     push    rsi
     mov     rdx, [rbp + LOC_PAT]
@@ -287,6 +320,12 @@ process_line:
     test    rax, rax
     jz      .pl_done
     mov     qword ptr [rbp + LOC_MATCH], 1
+    // -c: count only, no line output
+    test    qword ptr [rbp + LOC_FLAGS], 8
+    jz      .pl_print
+    inc     qword ptr [rbp + LOC_COUNT]
+    jmp     .pl_done
+.pl_print:
     // optional "name:" prefix
     mov     rax, [rbp + LOC_NAME]
     test    rax, rax
@@ -300,6 +339,18 @@ process_line:
     pop     rsi
     pop     rdi
 .pl_noname:
+    // optional "lineno:" prefix (-n)
+    test    qword ptr [rbp + LOC_FLAGS], 4
+    jz      .pl_noln
+    push    rdi
+    push    rsi
+    mov     rax, [rbp + LOC_LINENO]
+    call    put_uint
+    mov     al, ':'
+    call    put_char
+    pop     rsi
+    pop     rdi
+.pl_noln:
     mov     rdx, rsi                // write the line
     mov     rsi, rdi
     mov     rdi, STDOUT
@@ -366,6 +417,35 @@ put_char:
     mov     rdi, STDOUT
     lea     rsi, [rbp + LOC_CH]
     mov     rdx, 1
+    jmp     uolt_write
+
+// put_uint(rax = value): write the unsigned decimal to stdout.
+put_uint:
+    lea     rdi, [rbp + LOC_NUM + 20]
+    test    rax, rax
+    jnz     1f
+    dec     rdi
+    mov     byte ptr [rdi], '0'
+    jmp     2f
+1:
+    mov     r11, rax
+    mov     rcx, 10
+.pu_lp:
+    test    r11, r11
+    jz      2f
+    mov     rax, r11
+    xor     rdx, rdx
+    div     rcx
+    add     dl, '0'
+    dec     rdi
+    mov     [rdi], dl
+    mov     r11, rax
+    jmp     .pu_lp
+2:
+    lea     rdx, [rbp + LOC_NUM + 20]
+    sub     rdx, rdi
+    mov     rsi, rdi
+    mov     rdi, STDOUT
     jmp     uolt_write
 
 // put_str(rdi = ASCIZ): write the string to stdout.

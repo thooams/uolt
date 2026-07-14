@@ -30,6 +30,13 @@ compare "multi"     apple f g
 compare "-i multi"  -i apple f g
 compare "substring" pp f
 compare "space pat" "cherry pie" f
+compare "-n"        -n apple f
+compare "-c"        -c apple f
+compare "-c none"   -c zzz f
+compare "-in"       -in apple f
+compare "-vn"       -vn apple f
+compare "-n multi"  -n apple f g
+compare "-c multi"  -c a f g
 
 # stdin
 "$BIN" an <f >u.out 2>/dev/null; urc=$?

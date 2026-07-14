@@ -67,7 +67,8 @@ EXTRA_wc   := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
 EXTRA_yes  := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
 EXTRA_basename := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
 EXTRA_dirname  := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
-EXTRA_env      := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
+EXTRA_env      := libuolt/strlen.S libuolt/write.S libuolt/execve.S \
+                  $(SYSDIR)/write.S $(SYSDIR)/execve.S
 EXTRA_sleep    := libuolt/strlen.S libuolt/write.S libuolt/sleep.S \
                   $(SYSDIR)/write.S $(SYSDIR)/sleep.S
 EXTRA_mkdir    := libuolt/strlen.S libuolt/write.S libuolt/mkdir.S libuolt/chmod.S \

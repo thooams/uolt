@@ -6,8 +6,8 @@
 </p>
 
 <p align="center">
-  The <b>entire suite</b> is <b>35 KB</b> on Linux — smaller than a single stock
-  <code>grep</code> binary (187 KB), and <b>~59× smaller</b> than the equivalent
+  The <b>entire suite</b> is <b>37 KB</b> on Linux — smaller than a single stock
+  <code>grep</code> binary (187 KB), and <b>~57× smaller</b> than the equivalent
   stock tools combined, while staying byte-for-byte compatible.
 </p>
 
@@ -38,7 +38,7 @@ See [the constitution](.specify/memory/constitution.md) for the full governing p
 
 <table>
 <tr><th>Platform</th><th>UOLT suite (31 tools)</th><th>Stock tools combined</th><th>Smaller by</th></tr>
-<tr><td>Linux (static ELF)</td><td><b>35.3 KB</b></td><td>2.08 MB</td><td><b>~59×</b></td></tr>
+<tr><td>Linux (static ELF)</td><td><b>36.7 KB</b></td><td>2.08 MB</td><td><b>~57×</b></td></tr>
 <tr><td>macOS (Mach-O)</td><td>208 KB</td><td>3.60 MB</td><td>~17×</td></tr>
 </table>
 
@@ -74,7 +74,7 @@ flag reference are in the collapsible sections below.
 | `pwd`      | physical working directory               |  528 B | 35.3 KB | **67×** |
 | `yes`      | repeat a line forever                    |  808 B | 35.2 KB | **44×** |
 | `seq`      | integer sequence (`-s`, `-w`)            | 1344 B | 51.7 KB | **38×** |
-| `env`      | print the environment                    |  496 B | 48.1 KB | **97×** |
+| `env`      | run a command / print the env (`-i`, `-u`) | 1616 B | 48.1 KB | **30×** |
 | `sleep`    | suspend (`s`/`m`/`h`/`d` suffixes)       |  960 B | 35.3 KB | **37×** |
 | `basename` | final path component (+ suffix strip)    |  728 B | 35.3 KB | **49×** |
 | `dirname`  | directory part of a path                 |  688 B | 35.2 KB | **51×** |
@@ -137,7 +137,7 @@ reported for transparency and measured against the Linux target, not held to it.
 | `dirname`  | 5408 B | 101.2 KB | `grep`| 7648 B | 153.8 KB |
 | `sleep` | 5704 B | 101.2 KB | `find` | 8928 B | 171.3 KB |
 | `tee`   | 9408 B | 101.2 KB | `sort` | 8888 B | 206.0 KB |
-| `uniq`  | 9144 B | 102.2 KB | `env`  | 6440 B | 102.4 KB |
+| `uniq`  | 9144 B | 102.2 KB | `env`  | 8592 B | 102.4 KB |
 | `cut`   | 9840 B | 102.5 KB | `tr`   | 7640 B | 135.3 KB |
 | `comm`  | 9136 B | 101.7 KB |        |        |         |
 
@@ -184,7 +184,9 @@ an integer sequence (`seq [-s STRING] [-w] [first [incr]] last`, GNU separator s
 input is held in a 1 MB buffer); `uolt-tee` copies stdin to stdout and to each file
 (`-a` appends); `uolt-uniq` collapses adjacent duplicate lines (`-c` count, `-d`
 duplicated, `-u` unique, `-i` case-insensitive, `-f N` skip fields, `-s N` skip chars);
-`uolt-env` prints the environment (running a command is not yet supported); `uolt-cut`
+`uolt-env` runs a command with a modified environment (`-i` starts empty, `-u NAME`
+unsets, `NAME=VALUE` adds or overrides, PATH-searched unless the command has a `/`),
+or prints the environment when no command is given; `uolt-cut`
 selects character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges (`-s` drops
 lines with no delimiter); `uolt-tr` translates, deletes (`-d`), or squeezes repeats (`-s`)
 bytes, and `-c` complements set1 so the operation applies to every byte not listed

@@ -41,6 +41,13 @@ printf 'a\nb\nc\n' | "$BIN" -n2 >"$tmp/o"
 printf 'a\nb\n' >"$tmp/want"
 cmp -s "$tmp/o" "$tmp/want" || { echo "FAIL unit: stdin -n2"; fail=1; }
 
+# -c: first N bytes (may split a line).
+"$BIN" -c3 "$tmp/a" >"$tmp/o"
+[ "$(cat "$tmp/o")" = "lin" ] || { echo "FAIL unit: -c3"; fail=1; }
+"$BIN" -c 100 "$tmp/b" >"$tmp/o"
+cmp -s "$tmp/o" "$tmp/b" || { echo "FAIL unit: -c beyond size"; fail=1; }
+[ "$(printf 'abcdef' | "$BIN" -c4)" = "abcd" ] || { echo "FAIL unit: -c stdin"; fail=1; }
+
 # Multiple files -> headers + blank-line separator.
 "$BIN" -n1 "$tmp/a" "$tmp/b" >"$tmp/o"
 printf '==> %s <==\nline1\n\n==> %s <==\nx\n' "$tmp/a" "$tmp/b" >"$tmp/want"

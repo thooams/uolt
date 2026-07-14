@@ -53,6 +53,7 @@
 .set LOC_CNT,   -88             // newline count so far
 .set LOC_FB,    -96             // firstbyte flag (skip one trailing newline)
 .set LOC_CS,    -104            // current chunk size
+.set LOC_BYTES, -112            // -c mode: count bytes instead of lines
 
 .text
 .globl uolt_main
@@ -72,6 +73,7 @@ uolt_main:
     //     operand and the operand count in rcx. ---
     mov     qword ptr [rbp + LOC_N], DEFLINES
     mov     qword ptr [rbp + LOC_PLUS], 0
+    mov     qword ptr [rbp + LOC_BYTES], 0
     mov     r13, rsi
     add     r13, 8              // &argv[1]
     mov     rcx, rdi
@@ -94,7 +96,11 @@ uolt_main:
     jmp     .opt_done
 .chk_n:
     cmp     byte ptr [rbx + 1], 'n'
+    je      .nc_num
+    cmp     byte ptr [rbx + 1], 'c'
     jne     .opt_done
+    mov     qword ptr [rbp + LOC_BYTES], 1
+.nc_num:
     cmp     byte ptr [rbx + 2], 0
     jne     .n_joined
     add     r13, 8              // "-n" number (next argument)
@@ -200,16 +206,26 @@ uolt_main:
     dec     qword ptr [rbp + LOC_REM]
     jmp     .ploop
 
-// .run_one: process descriptor rbx per the parsed N / plus flag.
+// .run_one: process descriptor rbx per the parsed N / plus / bytes flags.
 .run_one:
     mov     rdi, rbx
     mov     rsi, [rbp + LOC_N]
+    cmp     qword ptr [rbp + LOC_BYTES], 0
+    jne     .ro_bytes
     cmp     qword ptr [rbp + LOC_PLUS], 0
     jne     1f
     call    last_lines
     ret
 1:
     call    forward_from_line
+    ret
+.ro_bytes:
+    cmp     qword ptr [rbp + LOC_PLUS], 0
+    jne     2f
+    call    last_bytes
+    ret
+2:
+    call    forward_from_byte
     ret
 
 .finish:
@@ -365,6 +381,121 @@ last_lines_pipe:
     mov     rdx, rax            // length = len - start
     call    emit
 .lp_fin:
+    pop     rbx
+    ret
+
+// last_bytes(fd in rdi, N in rsi): print the last N bytes. Seeks on a regular
+// file; falls back to a sliding window on a pipe.
+last_bytes:
+    push    rbx
+    push    r12
+    mov     rbx, rdi
+    mov     r12, rsi
+    test    r12, r12
+    jz      .lb_done
+    mov     rdi, rbx
+    xor     rsi, rsi
+    mov     rdx, SEEK_END
+    call    uolt_lseek
+    test    rax, rax
+    js      .lb_pipe
+    sub     rax, r12                    // start = end - N (clamp to 0)
+    jns     1f
+    xor     rax, rax
+1:
+    mov     rdi, rbx
+    mov     rsi, rax
+    mov     rdx, SEEK_SET
+    call    uolt_lseek
+    mov     rdi, rbx
+    call    copy_to_eof
+.lb_done:
+    pop     r12
+    pop     rbx
+    ret
+.lb_pipe:
+    mov     rdi, rbx
+    mov     rsi, r12
+    call    last_bytes_pipe
+    jmp     .lb_done
+
+// last_bytes_pipe(fd in rdi, N in rsi): non-seekable last-N-bytes via a sliding
+// window keeping the last min(N, BUFSZ) bytes, then emitting them all.
+last_bytes_pipe:
+    push    rbx
+    mov     rbx, rdi
+    mov     r10, rsi                    // keep = min(N, BUFSZ)
+    mov     rax, BUFSZ
+    cmp     r10, rax
+    jbe     1f
+    mov     r10, rax
+1:
+    xor     r8, r8                      // len
+.lbp_read:
+    mov     rdi, rbx
+    lea     rsi, [r15 + r8]
+    mov     rdx, BUFSZ
+    call    uolt_read
+    test    rax, rax
+    jz      .lbp_eof
+    js      .lbp_fin
+    add     r8, rax
+    cmp     r8, r10
+    jbe     .lbp_read
+    mov     rcx, r8
+    sub     rcx, r10                    // drop oldest
+    lea     rsi, [r15 + rcx]
+    mov     rdi, r15
+    mov     r8, r10
+    mov     rcx, r10
+    rep     movsb
+    jmp     .lbp_read
+.lbp_eof:
+    test    r8, r8
+    jz      .lbp_fin
+    mov     rsi, r15
+    mov     rdx, r8
+    call    emit
+.lbp_fin:
+    pop     rbx
+    ret
+
+// forward_from_byte(fd in rdi, startbyte in rsi): copy from byte `startbyte`
+// (1-based) to EOF. startbyte <= 1 copies everything.
+forward_from_byte:
+    push    rbx
+    mov     rbx, rdi
+    mov     r10, rsi
+    dec     r10                         // bytes to skip
+    jle     .fb_all
+.fb_read:
+    mov     rdi, rbx
+    mov     rsi, r15
+    mov     rdx, BUFSZ
+    call    uolt_read
+    test    rax, rax
+    jz      .fb_done
+    js      .fb_err
+    cmp     r10, rax
+    jae     .fb_skipblock
+    lea     rsi, [r15 + r10]            // emit the rest of this block
+    mov     rdx, rax
+    sub     rdx, r10
+    call    emit
+    mov     rdi, rbx
+    call    copy_to_eof
+    jmp     .fb_done
+.fb_skipblock:
+    sub     r10, rax
+    jmp     .fb_read
+.fb_all:
+    mov     rdi, rbx
+    call    copy_to_eof
+.fb_done:
+    pop     rbx
+    ret
+.fb_err:
+    mov     r14, 1
     pop     rbx
     ret
 

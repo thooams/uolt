@@ -45,6 +45,13 @@ printf 'a\nb\nc\nd\n' | "$BIN" -n2 >"$tmp/o"
 printf 'c\nd\n' >"$tmp/want"
 cmp -s "$tmp/o" "$tmp/want" || { echo "FAIL unit: stdin -n2"; fail=1; }
 
+# -c: last N bytes (seek and pipe paths).
+printf '0123456789' >"$tmp/c10"
+[ "$("$BIN" -c3 "$tmp/c10")" = "789" ]      || { echo "FAIL unit: -c3 file"; fail=1; }
+[ "$(printf '0123456789' | "$BIN" -c4)" = "6789" ] || { echo "FAIL unit: -c pipe"; fail=1; }
+[ "$("$BIN" -c +4 "$tmp/c10")" = "3456789" ] || { echo "FAIL unit: -c +N"; fail=1; }
+[ "$("$BIN" -c 999 "$tmp/c10")" = "0123456789" ] || { echo "FAIL unit: -c beyond size"; fail=1; }
+
 # Multiple files -> headers + blank-line separator.
 "$BIN" -n1 "$tmp/a" "$tmp/b" >"$tmp/o"
 printf '==> %s <==\nline12\n\n==> %s <==\ny\n' "$tmp/a" "$tmp/b" >"$tmp/want"

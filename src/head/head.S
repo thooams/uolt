@@ -39,6 +39,7 @@
 .set LOC_REM,   -48
 .set LOC_HDR,   -56
 .set LOC_FIRST, -64
+.set LOC_BYTES, -72             // -c mode: count bytes instead of lines
 
 .text
 .globl uolt_main
@@ -53,6 +54,7 @@ uolt_main:
     sub     rsp, BUFSZ + 64     // 64 KB buffer + room for the stack locals
     mov     r15, rsp            // buffer base
     xor     r14, r14            // exit status 0
+    mov     qword ptr [rbp + LOC_BYTES], 0
 
     // --- Option parsing: set N (r12), advance r13 to the first operand,
     //     leave the operand count in rcx. ---
@@ -79,7 +81,11 @@ uolt_main:
     jmp     .opt_done
 .chk_n:
     cmp     byte ptr [rbx + 1], 'n'
+    je      .nc_num
+    cmp     byte ptr [rbx + 1], 'c'
     jne     .opt_done           // unknown option -> treat rest as operands
+    mov     qword ptr [rbp + LOC_BYTES], 1
+.nc_num:
     cmp     byte ptr [rbx + 2], 0
     jne     .n_joined
     // "-n" with the number in the next argument.
@@ -115,7 +121,7 @@ uolt_main:
     jnz     .have_ops
     mov     rbx, STDIN
     mov     rdi, r12
-    call    head_fd
+    call    head_run
     jmp     .finish
 
 .have_ops:
@@ -145,7 +151,7 @@ uolt_main:
 2:
     mov     rbx, STDIN
     mov     rdi, r12
-    call    head_fd
+    call    head_run
     jmp     .pnext
 
 .pf_open:
@@ -162,7 +168,7 @@ uolt_main:
     call    print_header
 3:
     mov     rdi, r12            // line count N
-    call    head_fd             // uses rbx = fd
+    call    head_run             // uses rbx = fd
     mov     rdi, rbx
     call    uolt_close
     jmp     .pnext
@@ -190,6 +196,48 @@ uolt_main:
     pop     r12
     pop     rbx
     pop     rbp
+    ret
+
+// head_run(rbx = fd, rdi = N): dispatch to the line or byte copy per -c.
+head_run:
+    cmp     qword ptr [rbp + LOC_BYTES], 0
+    je      head_fd
+    // fall through to head_bytes
+
+// head_bytes(rbx = fd, rdi = N): copy the first N bytes to stdout.
+head_bytes:
+    mov     r10, rdi                    // remaining bytes
+1:
+    test    r10, r10
+    jz      3f
+    mov     rdi, rbx
+    mov     rsi, r15
+    mov     rdx, BUFSZ
+    cmp     rdx, r10
+    jbe     2f
+    mov     rdx, r10                    // never read more than remaining
+2:
+    call    uolt_read
+    test    rax, rax
+    jz      3f
+    js      .hb_err
+    sub     r10, rax                    // remaining -= bytes read
+    mov     r8, rax                     // drain the block
+    mov     r9, r15
+4:
+    mov     rdi, STDOUT
+    mov     rsi, r9
+    mov     rdx, r8
+    call    uolt_write
+    test    rax, rax
+    js      .hb_err
+    add     r9, rax
+    sub     r8, rax
+    jnz     4b
+    jmp     1b
+.hb_err:
+    mov     r14, 1
+3:
     ret
 
 // head_fd - copy the first r10 lines of an open descriptor to stdout.

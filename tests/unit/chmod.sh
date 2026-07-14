@@ -18,8 +18,12 @@ touch f g
 "$BIN" 644 f g; { [ "$(perm f)" = "644" ] && [ "$(perm g)" = "644" ]; } || { echo "FAIL unit: multi"; fail=1; }
 "$BIN" 640 f; [ "$(perm f)" = "640" ] || { echo "FAIL unit: 640 [$(perm f)]"; fail=1; }
 
-# Symbolic mode is rejected (unsupported in v1).
-"$BIN" u+x f 2>/dev/null; [ $? -ne 0 ] || { echo "FAIL unit: symbolic accepted"; fail=1; }
+# Symbolic modes.
+chmod 644 f; "$BIN" u+x f;   [ "$(perm f)" = "744" ] || { echo "FAIL unit: u+x [$(perm f)]"; fail=1; }
+chmod 644 f; "$BIN" go-r f;  [ "$(perm f)" = "600" ] || { echo "FAIL unit: go-r [$(perm f)]"; fail=1; }
+chmod 644 f; "$BIN" a=r f;   [ "$(perm f)" = "444" ] || { echo "FAIL unit: a=r [$(perm f)]"; fail=1; }
+chmod 644 f; "$BIN" u+x,g+w f; [ "$(perm f)" = "764" ] || { echo "FAIL unit: multi [$(perm f)]"; fail=1; }
+mkdir dd; chmod 644 dd; "$BIN" a+X dd; [ "$(perm dd)" = "755" ] || { echo "FAIL unit: a+X dir [$(perm dd)]"; fail=1; }
 
 # Missing file, and operand-count errors.
 "$BIN" 755 nope 2>/dev/null; [ $? -ne 0 ] || { echo "FAIL unit: missing file exit 0"; fail=1; }

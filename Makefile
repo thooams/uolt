@@ -92,8 +92,8 @@ EXTRA_cp       := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S
                   $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S \
                   $(SYSDIR)/opendst.S $(SYSDIR)/opendir.S $(SYSDIR)/getdents.S \
                   $(SYSDIR)/mkdir.S
-EXTRA_chmod    := libuolt/strlen.S libuolt/write.S libuolt/chmod.S \
-                  $(SYSDIR)/write.S $(SYSDIR)/chmod.S
+EXTRA_chmod    := libuolt/strlen.S libuolt/write.S libuolt/chmod.S libuolt/statmode.S libuolt/umask.S \
+                  $(SYSDIR)/write.S $(SYSDIR)/chmod.S $(SYSDIR)/statmode.S $(SYSDIR)/umask.S
 EXTRA_ls       := libuolt/strlen.S libuolt/write.S libuolt/opendir.S libuolt/close.S \
                   libuolt/getdents.S $(SYSDIR)/write.S $(SYSDIR)/opendir.S \
                   $(SYSDIR)/close.S $(SYSDIR)/getdents.S

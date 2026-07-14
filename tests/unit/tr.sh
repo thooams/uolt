@@ -21,6 +21,11 @@ ck "a b c"      "$(printf 'a   b  c\n'  | "$BIN" -s ' ')"      "squeeze spaces"
 ck "helo world" "$(printf 'hello world\n' | "$BIN" -s l)"      "squeeze one char"
 ck "ABC"        "$(printf 'aabbcc\n'    | "$BIN" -s a-c A-C)"  "translate then squeeze"
 
+# -c complement of set1.
+ck "abcdef"     "$(printf 'abc123def\n' | "$BIN" -cd 'a-z')"   "delete complement"
+ck "a-b--c"     "$(printf 'a1b22c'      | "$BIN" -c 'a-z' '-')" "map complement"
+ck "a b c"      "$(printf 'a1b22c'      | "$BIN" -cs 'a-z' ' ')" "squeeze complement"
+
 # Multiple lines / binary-ish (newlines preserved unless mapped).
 [ "$(printf 'ab\nba\n' | "$BIN" ab AB | tr '\n' ,)" = "AB,BA," ] || { echo "FAIL unit: multiline"; fail=1; }
 

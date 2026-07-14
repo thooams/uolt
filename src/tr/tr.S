@@ -4,12 +4,13 @@
 // tr -d set1     delete bytes in set1
 // tr -s set1     squeeze repeated bytes in set1 to one
 //
-// -s may combine: `tr set1 set2 -s` translates then squeezes runs of set2's
-// bytes; `tr -ds set1 set2` deletes set1 and squeezes set2. Each set is a
-// sequence of literal bytes and ranges (e.g. a-z). For translation a byte in
-// set1 is mapped to the byte at the same index in set2, or to set2's last byte
-// if set2 is shorter (the common tr behavior). Backslash escapes and -c are out
-// of scope in v1.
+// -c (or -C) complements set1: the operation applies to every byte NOT listed in
+// set1. Options combine: `tr -cd set1` deletes everything except set1, `tr -cs
+// set1` squeezes runs outside set1, `tr -c set1 set2` maps every byte outside
+// set1 to set2. Each set is a sequence of literal bytes and ranges (e.g. a-z).
+// For translation a byte in set1 is mapped to the byte at the same index in set2,
+// or to set2's last byte if set2 is shorter (the common tr behavior). Backslash
+// escapes are out of scope in v1.
 //
 // A 256-entry translate table, a 256-entry delete flag, and a 256-entry squeeze
 // flag are built on the stack (no heap, Principle IV). Input is transformed block
@@ -31,6 +32,7 @@
 .set LOC_DEL,  -48
 .set LOC_SQ,   -56
 .set LOC_PREV, -64
+.set LOC_C,    -72
 
 .text
 .globl uolt_main
@@ -48,6 +50,7 @@ uolt_main:
     mov     qword ptr [rbp + LOC_DEL], 0
     mov     qword ptr [rbp + LOC_SQ], 0
     mov     qword ptr [rbp + LOC_PREV], -1
+    mov     qword ptr [rbp + LOC_C], 0
 
     mov     r12, rdi
     dec     r12
@@ -64,7 +67,7 @@ uolt_main:
     je      .init                       // "-" is an operand (unused, but not a flag)
     cmp     byte ptr [rbx + 1], '-'
     je      .ddash
-    lea     rcx, [rbx + 1]              // validate every letter is d/s
+    lea     rcx, [rbx + 1]              // validate every letter is d/s/c/C
     mov     rdi, rcx
 .ov:
     movzx   eax, byte ptr [rdi]
@@ -73,6 +76,10 @@ uolt_main:
     cmp     al, 'd'
     je      1f
     cmp     al, 's'
+    je      1f
+    cmp     al, 'c'
+    je      1f
+    cmp     al, 'C'
     je      1f
     jmp     .init                       // unknown letter -> treat token as a set
 1:
@@ -92,6 +99,13 @@ uolt_main:
     jne     3f
     mov     qword ptr [rbp + LOC_SQ], 1
 3:
+    cmp     al, 'c'
+    je      4f
+    cmp     al, 'C'
+    jne     5f
+4:
+    mov     qword ptr [rbp + LOC_C], 1  // -c / -C: complement set1
+5:
     inc     rdi
     jmp     .oa
 .odone:
@@ -133,6 +147,14 @@ uolt_main:
     mov     rbx, rax
     lea     r10, [r15 + BUFSZ]
     call    .mark_sq                    // (r10 = bytes, rbx = count)
+    cmp     qword ptr [rbp + LOC_C], 0  // -c: squeeze the complement
+    je      .run
+    xor     rcx, rcx
+.sqo_inv:
+    xor     byte ptr [r14 + 512 + rcx], 1
+    inc     rcx
+    cmp     rcx, 256
+    jne     .sqo_inv
     jmp     .run
 .translate2:
     mov     rdi, [r13]                  // set1 -> expand into out-buffer area
@@ -145,6 +167,8 @@ uolt_main:
     mov     r8, rax                     // len2
     test    r8, r8
     jz      .usage
+    cmp     qword ptr [rbp + LOC_C], 0
+    jne     .translate_c
     // map[set1[i]] = set2[min(i, len2-1)]
     xor     rcx, rcx
 .mp:
@@ -160,6 +184,42 @@ uolt_main:
     mov     [r14 + r9], al              // map[set1[i]] = set2[j]
     inc     rcx
     jmp     .mp
+.translate_c:
+    // -c: map every byte NOT in set1, in ascending order, to set2 (last byte of
+    // set2 for all beyond its length). Build set1 membership in in1[] at r14+768.
+    xor     rcx, rcx
+.tc_clr:
+    mov     byte ptr [r14 + 768 + rcx], 0
+    inc     rcx
+    cmp     rcx, 256
+    jne     .tc_clr
+    xor     rcx, rcx
+.tc_mark:
+    cmp     rcx, rbx
+    jae     .tc_map
+    movzx   r9, byte ptr [r15 + BUFSZ + rcx]
+    mov     byte ptr [r14 + 768 + r9], 1
+    inc     rcx
+    jmp     .tc_mark
+.tc_map:
+    xor     rcx, rcx                    // c
+    xor     r11, r11                    // k = index among complement bytes
+.tc_loop:
+    cmp     rcx, 256
+    jae     .mp_done
+    cmp     byte ptr [r14 + 768 + rcx], 0
+    jne     .tc_next                    // c is in set1 -> keep identity map
+    mov     r10, r11                    // j = min(k, len2-1)
+    cmp     r10, r8
+    jb      1f
+    lea     r10, [r8 - 1]
+1:
+    movzx   eax, byte ptr [r15 + r10]
+    mov     [r14 + rcx], al
+    inc     r11
+.tc_next:
+    inc     rcx
+    jmp     .tc_loop
 .mp_done:
     cmp     qword ptr [rbp + LOC_SQ], 0
     je      .run
@@ -184,6 +244,15 @@ uolt_main:
     inc     rcx
     jmp     .del
 .del_done:
+    cmp     qword ptr [rbp + LOC_C], 0  // -c: delete the complement of set1
+    je      .del_nc
+    xor     rcx, rcx
+.del_inv:
+    xor     byte ptr [r14 + 256 + rcx], 1
+    inc     rcx
+    cmp     rcx, 256
+    jne     .del_inv
+.del_nc:
     // -d with a second set squeezes that set (tr -ds set1 set2).
     cmp     qword ptr [rbp + LOC_SQ], 0
     je      .run
@@ -319,4 +388,4 @@ err_puts:
     mov     rdi, STDERR
     jmp     uolt_write
 
-err_usage: .asciz "uolt-tr: usage: tr [-s] set1 set2 | tr -d set1 | tr -s set1\n"
+err_usage: .asciz "uolt-tr: usage: tr [-cs] set1 set2 | tr -[c]d set1 | tr -[c]s set1\n"

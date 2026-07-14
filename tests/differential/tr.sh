@@ -31,6 +31,13 @@ compare -s 'a-c'
 compare -s 'abcglo'
 compare -s a-z A-Z          # translate then squeeze the mapped set
 compare -ds 'A-Z' ' '
+# -c complement of set1
+compare -cd 'a-zA-Z'        # delete everything but letters
+compare -cd '0-9'
+compare -cs 'a-zA-Z0-9'     # squeeze runs of non-alphanumerics
+compare -c 'a-zA-Z' ' '     # map every non-letter to a space
+compare -c '0-9' '#'
+compare -cs 'a-z' ' '
 
 [ "$fail" -eq 0 ] && echo "PASS differential/tr (ref: $REF)"
 exit "$fail"

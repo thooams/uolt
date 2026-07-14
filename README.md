@@ -97,7 +97,7 @@ flag reference are in the collapsible sections below.
 | `sort` | sort lines (`-r -n -u -f -b`)                             | 1384 B | 105.3 KB | **76×** |
 | `uniq` | collapse adjacent dups (`-c -d -u -i -f -s`)              | 1608 B |  39.4 KB | **25×** |
 | `cut`  | select characters / fields (`-c -f -d -s`)               | 1856 B |  39.4 KB | **21×** |
-| `tr`   | translate / delete / squeeze bytes (`-d -s`)             | 1320 B |  47.6 KB | **36×** |
+| `tr`   | translate / delete / squeeze / complement bytes (`-d -s -c`) | 1560 B |  47.6 KB | **31×** |
 | `comm` | compare two sorted files (`-1 -2 -3`)                    | 1496 B |  39.4 KB | **26×** |
 
 ### Filesystem
@@ -186,7 +186,8 @@ duplicated, `-u` unique, `-i` case-insensitive, `-f N` skip fields, `-s N` skip 
 `uolt-env` prints the environment (running a command is not yet supported); `uolt-cut`
 selects character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges (`-s` drops
 lines with no delimiter); `uolt-tr` translates, deletes (`-d`), or squeezes repeats (`-s`)
-bytes (sets support `a-z` ranges); `uolt-comm` compares two sorted files in three columns
+bytes, and `-c` complements set1 so the operation applies to every byte not listed
+(sets support `a-z` ranges); `uolt-comm` compares two sorted files in three columns
 (`-1`/`-2`/`-3` suppress columns). All ignore unrelated arguments.
 
 </details>

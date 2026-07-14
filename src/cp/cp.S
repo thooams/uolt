@@ -7,8 +7,9 @@
 // -r, directories are walked recursively (opendir/getdents from ls) and
 // re-created (mkdir); two path buffers - source and target - are grown in
 // parallel and truncated on return. Permission bits are not preserved (files get
-// 0666 masked by the umask, directories 0777 masked). Copying into an existing
-// directory (cp src... dir) and same-file detection are out of scope in v1.
+// 0666 masked by the umask, directories 0777 masked). When the final operand is
+// an existing directory, each source is copied to dir/basename(source) (this is
+// the cp src... dir form). Same-file detection is out of scope in v1.
 //
 // Called as uolt_main(argc in rdi, argv in rsi) by the per-OS entry shim.
 //
@@ -29,6 +30,9 @@
 
 .set LOC_STAT, -48
 .set LOC_R,    -56
+.set LOC_DIR,  -64
+.set S_IFMT,   0170000
+.set S_IFDIR,  0040000
 
 .text
 .globl uolt_main
@@ -84,9 +88,80 @@ uolt_main:
     dec     r12
 .after:
     cmp     r12, 2
-    jne     .usage
+    jl      .usage
 
-    // copy the operands into the two path buffers
+    // If the final operand is an existing directory, copy each source into it.
+    mov     rdi, [r13 + r12*8 - 8]
+    call    uolt_statmode
+    test    rax, rax
+    js      .two
+    and     rax, S_IFMT
+    cmp     rax, S_IFDIR
+    jne     .two
+
+    // Into-directory form: for each source, dst = dir/basename(source).
+    mov     rax, [r13 + r12*8 - 8]
+    mov     [rbp + LOC_DIR], rax
+    xor     r14, r14                    // source index
+.id_loop:
+    mov     rax, r12
+    dec     rax                         // number of sources
+    cmp     r14, rax
+    jae     .fin
+    mov     rsi, [r13 + r14*8]          // source into srcbuf
+    mov     rdi, r15
+    call    .copy_str
+    mov     rbx, rax                    // src length
+    mov     rsi, [rbp + LOC_DIR]        // dir into dstbuf
+    lea     rdi, [r15 + PATHMAX]
+    call    .copy_str
+    mov     rcx, rax
+    mov     byte ptr [r15 + PATHMAX + rcx], '/'
+    inc     rcx
+    mov     rdx, [r13 + r14*8]          // basename of source (scan for last '/')
+    mov     rsi, rdx
+.id_bn:
+    movzx   eax, byte ptr [rdx]
+    test    al, al
+    jz      .id_bndone
+    cmp     al, '/'
+    jne     1f
+    lea     rsi, [rdx + 1]
+1:
+    inc     rdx
+    jmp     .id_bn
+.id_bndone:
+    lea     rdi, [r15 + PATHMAX + rcx]  // append basename
+    mov     rax, rsi
+2:
+    mov     dl, [rax]
+    mov     [rdi], dl
+    test    dl, dl
+    jz      3f
+    inc     rax
+    inc     rdi
+    jmp     2b
+3:
+    lea     rax, [r15 + PATHMAX]
+    sub     rdi, rax                    // rdi = dst length
+    cmp     qword ptr [rbp + LOC_R], 0
+    jne     .id_tree
+    mov     rdi, r15
+    lea     rsi, [r15 + PATHMAX]
+    call    copy_file
+    jmp     .id_next
+.id_tree:
+    mov     rsi, rdi                    // dst length
+    mov     rdi, rbx                    // src length
+    call    copy_tree
+.id_next:
+    inc     r14
+    jmp     .id_loop
+
+.two:
+    cmp     r12, 2
+    jne     .usage
+    // copy the two operands into the path buffers
     mov     rdi, r15
     mov     rsi, [r13]
     call    .copy_str                   // -> rax = src length

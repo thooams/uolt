@@ -25,9 +25,14 @@ head -c 200000 /dev/urandom >big 2>/dev/null || dd if=/dev/urandom of=big bs=100
 # Empty file.
 : >empty; "$BIN" empty ecopy; { [ $? -eq 0 ] && [ ! -s ecopy ]; } || { echo "FAIL unit: empty copy"; fail=1; }
 
+# Copy into an existing directory: dst is a dir -> dir/basename(src).
+mkdir d; printf 'p\n' >p
+"$BIN" p d; { [ $? -eq 0 ] && [ "$(cat d/p)" = "p" ]; } || { echo "FAIL unit: into-dir"; fail=1; }
+printf '1' >s1; printf '2' >s2; "$BIN" s1 s2 d
+{ [ "$(cat d/s1)" = 1 ] && [ "$(cat d/s2)" = 2 ]; } || { echo "FAIL unit: multi into-dir"; fail=1; }
+
 # Errors.
 "$BIN" nope dest 2>/dev/null;  [ $? -ne 0 ] || { echo "FAIL unit: missing source exit 0"; fail=1; }
-mkdir d; "$BIN" a d 2>/dev/null; [ $? -ne 0 ] || { echo "FAIL unit: dir target exit 0"; fail=1; }
 "$BIN" a 2>/dev/null;          [ $? -ne 0 ] || { echo "FAIL unit: one operand exit 0"; fail=1; }
 "$BIN" >/dev/null 2>&1;        [ $? -ne 0 ] || { echo "FAIL unit: no operand exit 0"; fail=1; }
 

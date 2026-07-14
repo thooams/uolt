@@ -25,6 +25,9 @@ compare "overwrite"  "printf new >a; printf old >b"  a b
 compare "empty"      ": >a"                          a b
 compare "big"        "seq 1 20000 >a"                a b
 compare "missing"    "true"                          nope dest
+compare "into-dir"   "printf a >f; mkdir d"          f d
+compare "multi-dir"  "printf 1 >a; printf 2 >b; mkdir d"  a b d
+compare "slash-dir"  "mkdir s; printf x >s/q; mkdir d"    s/q d
 
 # -r: recursive directory copy. Compare the resulting trees (structure + content).
 comptree() {
@@ -42,6 +45,7 @@ comptree() {
 comptree "flat"   "mkdir s; printf a >s/x; printf bb >s/y"                 s d
 comptree "nested" "mkdir -p s/a/b; printf 1 >s/x; printf 2 >s/a/y; printf 3 >s/a/b/z"  s d
 comptree "empty"  "mkdir s"                                                s d
+comptree "into"   "mkdir s d; printf a >s/x; printf b >s/y"                s d
 
 [ "$fail" -eq 0 ] && echo "PASS differential/cp (ref: $REF)"
 exit "$fail"

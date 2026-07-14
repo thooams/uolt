@@ -31,5 +31,14 @@ fail=0
 # Multiple operands.
 "$BIN" "$tmp/m1" "$tmp/m2"; { [ -d "$tmp/m1" ] && [ -d "$tmp/m2" ]; } || { echo "FAIL unit: multiple"; fail=1; }
 
+# -m sets the exact mode regardless of umask.
+perm() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
+( umask 077; "$BIN" -m 755 "$tmp/mode1" )
+[ "$(perm "$tmp/mode1")" = "755" ] || { echo "FAIL unit: -m 755 [$(perm "$tmp/mode1")]"; fail=1; }
+"$BIN" -m 700 "$tmp/mode2"; [ "$(perm "$tmp/mode2")" = "700" ] || { echo "FAIL unit: -m 700"; fail=1; }
+"$BIN" -m750 "$tmp/mode3"; [ "$(perm "$tmp/mode3")" = "750" ] || { echo "FAIL unit: -m attached"; fail=1; }
+"$BIN" -p -m 700 "$tmp/pm/a/b"; [ "$(perm "$tmp/pm/a/b")" = "700" ] || { echo "FAIL unit: -p -m final"; fail=1; }
+"$BIN" -m 999 "$tmp/badmode" 2>/dev/null; [ $? -ne 0 ] || { echo "FAIL unit: -m bad exit 0"; fail=1; }
+
 [ "$fail" -eq 0 ] && echo "PASS unit/mkdir"
 exit "$fail"

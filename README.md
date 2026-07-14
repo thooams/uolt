@@ -43,7 +43,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-basename` | 728 B / 35336 B (**49× smaller**) | 5416 B / 101568 B (**19× smaller**) | **~1.4× faster**     | < 1 KB |
 | `uolt-dirname`  | 688 B / 35208 B (**51× smaller**) | 5408 B / 101168 B (**19× smaller**) | **~1.4× faster**     | < 1 KB |
 | `uolt-sleep`    | 960 B / 35336 B (**37× smaller**) | 5704 B / 101168 B (**18× smaller**) | **~parity**          | < 1 KB |
-| `uolt-mkdir`    | 856 B / 76296 B (**89× smaller**) | 5728 B / 101472 B (**18× smaller**) | **~parity**          | < 1 KB |
+| `uolt-mkdir`    | 1056 B / 76296 B (**72× smaller**) | 5728 B / 101472 B (**18× smaller**) | **~parity**          | < 2 KB |
 | `uolt-rmdir`    | 848 B / 47528 B (**56× smaller**) | 5720 B / 101120 B (**18× smaller**) | **~parity**          | < 1 KB |
 | `uolt-touch`    | 912 B / 96776 B (**106× smaller**) | 6248 B / 101792 B (**16× smaller**) | **~parity**         | < 1 KB |
 | `uolt-ln`       | 1176 B / 55816 B (**47× smaller**) | 6192 B / 102192 B (**17× smaller**) | **~parity**          | < 2 KB |
@@ -78,7 +78,7 @@ a newline forever, filling a 64 KB buffer to write in large blocks; `uolt-basena
 final component of a path (with an optional suffix removed) and `uolt-dirname` prints the
 directory part, both working purely on the argument bytes with no file access; `uolt-sleep`
 suspends for the sum of its time operands (decimal seconds with an optional `s`/`m`/`h`/`d`
-suffix); `uolt-mkdir` creates directories (`-p` makes parents and is idempotent); `uolt-rmdir` removes
+suffix); `uolt-mkdir` creates directories (`-p` makes parents and is idempotent, `-m MODE` sets the exact octal mode); `uolt-rmdir` removes
 empty directories (`-p` removes the ancestor chain); `uolt-touch` creates missing files and
 updates timestamps to now (`-c` skips creation); `uolt-ln` creates hard links (or symbolic with
 `-s`, replacing an existing target with `-f`, and links one or more sources into a

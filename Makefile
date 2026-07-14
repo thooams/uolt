@@ -70,8 +70,8 @@ EXTRA_dirname  := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
 EXTRA_env      := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
 EXTRA_sleep    := libuolt/strlen.S libuolt/write.S libuolt/sleep.S \
                   $(SYSDIR)/write.S $(SYSDIR)/sleep.S
-EXTRA_mkdir    := libuolt/strlen.S libuolt/write.S libuolt/mkdir.S \
-                  $(SYSDIR)/write.S $(SYSDIR)/mkdir.S
+EXTRA_mkdir    := libuolt/strlen.S libuolt/write.S libuolt/mkdir.S libuolt/chmod.S \
+                  $(SYSDIR)/write.S $(SYSDIR)/mkdir.S $(SYSDIR)/chmod.S
 EXTRA_rmdir    := libuolt/strlen.S libuolt/write.S libuolt/rmdir.S \
                   $(SYSDIR)/write.S $(SYSDIR)/rmdir.S
 EXTRA_touch    := libuolt/strlen.S libuolt/write.S libuolt/close.S \

@@ -28,5 +28,24 @@ compare "-p existing"    -p a a a
 compare "mixed"          -p a/b x
 compare "trailing slash" -p a/b/
 
+# -m: compare the resulting permission bits too.
+perm() { stat -c %a "$1" 2>/dev/null || stat -f %Lp "$1"; }
+comparem() {
+    desc=$1; target=$2; shift 2
+    ua=$(mktemp -d); ra=$(mktemp -d)
+    ( cd "$ua"; "$BIN" "$@" >/dev/null 2>&1 ); urc=$?
+    ( cd "$ra"; "$REF" "$@" >/dev/null 2>&1 ); rrc=$?
+    [ "$urc" -eq "$rrc" ] || { echo "FAIL diff [$desc]: exit $urc vs ref $rrc"; fail=1; }
+    [ "$(perm "$ua/$target")" = "$(perm "$ra/$target")" ] \
+        || { echo "FAIL diff [$desc]: perm $(perm "$ua/$target") vs $(perm "$ra/$target")"; fail=1; }
+    rm -rf "$ua" "$ra"
+}
+comparem "-m 700"      d -m 700 d
+comparem "-m 755"      d -m 755 d
+comparem "-m 750"      d -m 750 d
+comparem "-m 644"      d -m 644 d
+comparem "-m attached" d -m700 d
+comparem "-p -m 700"   a/b/c -p -m 700 a/b/c
+
 [ "$fail" -eq 0 ] && echo "PASS differential/mkdir (ref: $REF)"
 exit "$fail"

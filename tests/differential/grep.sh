@@ -12,6 +12,7 @@ cd "$tmp" || exit 1
 
 printf 'apple\nbanana\ncherry pie\nAPPLE\napple sauce\n' >f
 printf 'grape\nApple\nxyz\n' >g
+printf 'apple\nan apple a day\npineapple\napple-pie\nAPPLE\nappletree\n' >w
 
 compare() {
     desc=$1; shift
@@ -37,6 +38,20 @@ compare "-in"       -in apple f
 compare "-vn"       -vn apple f
 compare "-n multi"  -n apple f g
 compare "-c multi"  -c a f g
+
+# -w word-boundary match
+compare "-w"        -w apple w
+compare "-iw"       -iw apple w
+compare "-vw"       -vw apple w
+compare "-wn"       -wn apple w
+compare "-wc"       -wc apple w
+# -x whole-line match
+compare "-x"        -x apple w
+compare "-ix"       -ix apple w
+compare "-vx"       -vx apple w
+compare "-xn"       -xn apple w
+compare "-x space"  -x "cherry pie" f
+compare "-xc"       -xc apple w
 
 # stdin
 "$BIN" an <f >u.out 2>/dev/null; urc=$?

@@ -30,6 +30,13 @@ got=$("$BIN" apple f g | sort | tr '\n' ',')
 [ "$("$BIN" -c zzz f)" = "0" ]                   || { echo "FAIL unit: -c none"; fail=1; }
 [ "$("$BIN" -in apple f | tr '\n' ',')" = "1:apple,4:APPLE pie," ] || { echo "FAIL unit: -in"; fail=1; }
 
+# -w: match only on word boundaries; -x: match only the whole line.
+printf 'apple\npineapple\napple-pie\nan apple\nappletree\n' >w
+[ "$("$BIN" -w apple w | tr '\n' ',')" = "apple,apple-pie,an apple," ] || { echo "FAIL unit: -w"; fail=1; }
+[ "$("$BIN" -x apple w | tr '\n' ',')" = "apple," ]                    || { echo "FAIL unit: -x"; fail=1; }
+[ "$("$BIN" -c -w apple w)" = "3" ]                                    || { echo "FAIL unit: -wc"; fail=1; }
+[ "$("$BIN" -ix APPLE w | tr '\n' ',')" = "apple," ]                   || { echo "FAIL unit: -ix"; fail=1; }
+
 # A final line without a trailing newline still matches.
 printf 'no-newline-apple' >h
 [ "$("$BIN" apple h)" = "no-newline-apple" ] || { echo "FAIL unit: no trailing newline"; fail=1; }

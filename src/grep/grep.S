@@ -1,8 +1,10 @@
 // src/grep/grep.S - the `grep` utility (fixed-string match).
 //
-// grep [-i] [-v] pattern [file...]: print input lines that contain `pattern` as
+// grep [-ivncwx] pattern [file...]: print input lines that contain `pattern` as
 // a literal substring. -i matches case-insensitively; -v prints the non-matching
-// lines. With no file (or only stdin) lines are read from standard input; with
+// lines; -n prefixes line numbers; -c prints only a match count; -w requires the
+// match to fall on word boundaries; -x requires the whole line to equal the
+// pattern. With no file (or only stdin) lines are read from standard input; with
 // more than one file each matching line is prefixed with "file:". Regular
 // expressions and the many other grep options are out of scope in v1 (this is a
 // fixed-string matcher, like `grep -F`).
@@ -34,6 +36,7 @@
 .set LOC_LINENO, -104
 .set LOC_COUNT,  -112
 .set LOC_NUM,    -136
+.set LOC_XLEN,   -144       // saved original line length (for -w/-x)
 
 .text
 .globl uolt_main
@@ -79,6 +82,10 @@ uolt_main:
     je      1f
     cmp     cl, 'c'
     je      1f
+    cmp     cl, 'w'
+    je      1f
+    cmp     cl, 'x'
+    je      1f
     jmp     .have_pat               // unknown -> treat as the pattern
 1:
     inc     rdi
@@ -105,6 +112,14 @@ uolt_main:
     jne     8f
     or      qword ptr [rbp + LOC_FLAGS], 8
 8:
+    cmp     cl, 'w'
+    jne     9f
+    or      qword ptr [rbp + LOC_FLAGS], 16
+9:
+    cmp     cl, 'x'
+    jne     10f
+    or      qword ptr [rbp + LOC_FLAGS], 32
+10:
     inc     rdi
     jmp     .ap
 .apd:
@@ -364,6 +379,9 @@ process_line:
 // pattern occurs in the line (case-insensitively when ci). Naive scan.
 contains:
     push    rbx
+    mov     [rbp + LOC_XLEN], rsi   // save the original line length
+    test    qword ptr [rbp + LOC_FLAGS], 32     // -x: whole-line match
+    jnz     .ct_exact
     test    rcx, rcx
     jz      .ct_yes                 // empty pattern matches every line
     mov     r9, rsi
@@ -373,11 +391,11 @@ contains:
 .ct_out:
     cmp     r10, r9
     jg      .ct_no
-    lea     rsi, [rdi + r10]        // base = &line[i] (len no longer needed)
+    lea     rsi, [rdi + r10]        // base = &line[i] (len saved in LOC_XLEN)
     xor     r11, r11                // j
 .ct_in:
     cmp     r11, rcx
-    je      .ct_yes                 // matched the whole pattern
+    je      .ct_matched             // matched the whole pattern
     mov     al, [rsi + r11]
     mov     bl, [rdx + r11]
     test    r8, r8
@@ -399,9 +417,59 @@ contains:
     jne     .ct_next
     inc     r11
     jmp     .ct_in
+.ct_matched:
+    test    qword ptr [rbp + LOC_FLAGS], 16     // -w: require word boundaries
+    jz      .ct_yes
+    // left edge: start of line or a non-word char before the match
+    test    r10, r10
+    jz      .cw_left
+    mov     al, [rdi + r10 - 1]
+    call    is_word
+    test    rax, rax
+    jnz     .ct_next                // word char to the left -> not a whole word
+.cw_left:
+    // right edge: end of line or a non-word char after the match
+    mov     rax, r10
+    add     rax, rcx                // index just past the match
+    cmp     rax, [rbp + LOC_XLEN]
+    jae     .ct_yes
+    mov     al, [rdi + rax]
+    call    is_word
+    test    rax, rax
+    jnz     .ct_next
+    jmp     .ct_yes
 .ct_next:
     inc     r10
     jmp     .ct_out
+.ct_exact:
+    // -x: the line must equal the pattern (folded under -i).
+    cmp     rsi, rcx                // lengths differ -> no match
+    jne     .ct_no
+    xor     r10, r10
+.cx_lp:
+    cmp     r10, rcx
+    je      .ct_yes
+    mov     al, [rdi + r10]
+    mov     bl, [rdx + r10]
+    test    r8, r8
+    jz      .cx_cmp
+    cmp     al, 'A'
+    jb      3f
+    cmp     al, 'Z'
+    ja      3f
+    add     al, 0x20
+3:
+    cmp     bl, 'A'
+    jb      4f
+    cmp     bl, 'Z'
+    ja      4f
+    add     bl, 0x20
+4:
+.cx_cmp:
+    cmp     al, bl
+    jne     .ct_no
+    inc     r10
+    jmp     .cx_lp
 .ct_yes:
     mov     rax, 1
     pop     rbx
@@ -409,6 +477,32 @@ contains:
 .ct_no:
     xor     rax, rax
     pop     rbx
+    ret
+
+// is_word(al) -> rax = 1 if al is a word character [A-Za-z0-9_], else 0.
+// Clobbers rax only.
+is_word:
+    cmp     al, '0'
+    jb      9f
+    cmp     al, '9'
+    jbe     8f
+    cmp     al, 'A'
+    jb      9f
+    cmp     al, 'Z'
+    jbe     8f
+    cmp     al, 'a'
+    jb      1f
+    cmp     al, 'z'
+    jbe     8f
+    jmp     9f
+1:
+    cmp     al, '_'
+    je      8f
+9:
+    xor     eax, eax
+    ret
+8:
+    mov     eax, 1
     ret
 
 // put_char(al): write one byte to stdout.
@@ -465,6 +559,6 @@ err_puts:
     mov     rdi, STDERR
     jmp     uolt_write
 
-err_usage: .asciz "uolt-grep: usage: grep [-i] [-v] pattern [file...]\n"
+err_usage: .asciz "uolt-grep: usage: grep [-ivncwx] pattern [file...]\n"
 err_pre:   .asciz "uolt-grep: "
 err_suf:   .asciz ": cannot open\n"

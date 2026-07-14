@@ -26,5 +26,22 @@ compare "empty"      ": >a"                          a b
 compare "big"        "seq 1 20000 >a"                a b
 compare "missing"    "true"                          nope dest
 
+# -r: recursive directory copy. Compare the resulting trees (structure + content).
+comptree() {
+    desc=$1; seed=$2; shift 2
+    ua=$(mktemp -d); ra=$(mktemp -d)
+    ( cd "$ua"; eval "$seed"; "$BIN" -r "$@" >/dev/null 2>&1 )
+    ( cd "$ra"; eval "$seed"; "$REF" -r "$@" >/dev/null 2>&1 )
+    ut=$(cd "$ua" && find . | sort); rt=$(cd "$ra" && find . | sort)
+    [ "$ut" = "$rt" ] || { echo "FAIL diff [$desc]: tree differs"; fail=1; }
+    for f in $(cd "$ua" && find . -type f | sort); do
+        cmp -s "$ua/$f" "$ra/$f" || { echo "FAIL diff [$desc]: $f content"; fail=1; }
+    done
+    rm -rf "$ua" "$ra"
+}
+comptree "flat"   "mkdir s; printf a >s/x; printf bb >s/y"                 s d
+comptree "nested" "mkdir -p s/a/b; printf 1 >s/x; printf 2 >s/a/y; printf 3 >s/a/b/z"  s d
+comptree "empty"  "mkdir s"                                                s d
+
 [ "$fail" -eq 0 ] && echo "PASS differential/cp (ref: $REF)"
 exit "$fail"

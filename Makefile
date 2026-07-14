@@ -87,8 +87,11 @@ EXTRA_rm       := libuolt/strlen.S libuolt/write.S libuolt/unlink.S \
 EXTRA_mv       := libuolt/strlen.S libuolt/write.S libuolt/rename.S \
                   $(SYSDIR)/write.S $(SYSDIR)/rename.S
 EXTRA_cp       := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
-                  libuolt/close.S libuolt/opendst.S $(SYSDIR)/write.S \
-                  $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/opendst.S
+                  libuolt/close.S libuolt/opendst.S libuolt/opendir.S \
+                  libuolt/getdents.S libuolt/mkdir.S $(SYSDIR)/write.S \
+                  $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S \
+                  $(SYSDIR)/opendst.S $(SYSDIR)/opendir.S $(SYSDIR)/getdents.S \
+                  $(SYSDIR)/mkdir.S
 EXTRA_chmod    := libuolt/strlen.S libuolt/write.S libuolt/chmod.S \
                   $(SYSDIR)/write.S $(SYSDIR)/chmod.S
 EXTRA_ls       := libuolt/strlen.S libuolt/write.S libuolt/opendir.S libuolt/close.S \

@@ -49,7 +49,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-ln`       | 904 B / 55816 B (**62× smaller**) | 6192 B / 102192 B (**17× smaller**) | **~parity**          | < 1 KB |
 | `uolt-rm`       | 1232 B / 59912 B (**49× smaller**) | 8208 B / 119184 B (**15× smaller**) | **~parity**         | < 2 KB |
 | `uolt-mv`       | 664 B / 137752 B (**207× smaller**) | 5432 B / 119440 B (**22× smaller**) | **~parity**        | < 1 KB |
-| `uolt-cp`       | 952 B / 141848 B (**149× smaller**) | 6320 B / 153360 B (**24× smaller**) | **~parity**        | < 1 KB |
+| `uolt-cp`       | 1544 B / 141848 B (**92× smaller**) | 6320 B / 153360 B (**24× smaller**) | **~parity**        | < 1 KB |
 | `uolt-chmod`    | 816 B / 55816 B (**68× smaller**) | 5544 B / 120656 B (**22× smaller**) | **~parity**          | < 1 KB |
 | `uolt-ls`       | 976 B / 142312 B (**146× smaller**) | 7256 B / 154624 B (**21× smaller**) | **~parity**        | < 1 KB |
 | `uolt-seq`      | 928 B / 51720 B (**56× smaller**) | 5952 B / 134832 B (**23× smaller**) | **~parity**          | < 1 KB |
@@ -83,8 +83,8 @@ empty directories (`-p` removes the ancestor chain); `uolt-touch` creates missin
 updates timestamps to now (`-c` skips creation); `uolt-ln` creates hard links (or symbolic with
 `-s`, replacing an existing target with `-f`); `uolt-rm` removes files and, with `-r`,
 directory trees (`-f` ignores missing operands); `uolt-mv` renames a source to a target
-(two-operand form; moving into a directory is not yet supported); `uolt-cp` copies a file's
-contents to a target (two-operand form; `-r` and mode preservation are not yet supported);
+(two-operand form; moving into a directory is not yet supported); `uolt-cp` copies a file to a
+target, and with `-r` copies a directory tree (mode preservation not yet supported);
 `uolt-chmod` sets octal permission bits on files (symbolic modes are not yet supported);
 `uolt-ls` lists directory entries one per line (`-a` includes hidden entries; output is not
 sorted and columns/`-l` are not yet supported); `uolt-seq` prints an integer sequence

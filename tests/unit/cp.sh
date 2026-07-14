@@ -31,5 +31,12 @@ mkdir d; "$BIN" a d 2>/dev/null; [ $? -ne 0 ] || { echo "FAIL unit: dir target e
 "$BIN" a 2>/dev/null;          [ $? -ne 0 ] || { echo "FAIL unit: one operand exit 0"; fail=1; }
 "$BIN" >/dev/null 2>&1;        [ $? -ne 0 ] || { echo "FAIL unit: no operand exit 0"; fail=1; }
 
+# -r: recursive directory tree copy.
+mkdir -p tree/a/b; printf '1' >tree/x; printf '2' >tree/a/y; printf '3' >tree/a/b/z
+"$BIN" -r tree dtree; rc=$?
+{ [ "$rc" -eq 0 ] && [ "$(cat dtree/x)" = 1 ] && [ "$(cat dtree/a/y)" = 2 ] && [ "$(cat dtree/a/b/z)" = 3 ]; } \
+    || { echo "FAIL unit: -r tree"; fail=1; }
+[ -d dtree/a/b ] || { echo "FAIL unit: -r structure"; fail=1; }
+
 [ "$fail" -eq 0 ] && echo "PASS unit/cp"
 exit "$fail"

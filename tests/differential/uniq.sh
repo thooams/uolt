@@ -19,10 +19,17 @@ compare() {
     [ "$u" = "$r" ] || { echo "FAIL diff [$desc]: [$u] != [$r]"; fail=1; }
 }
 
+printf 'A\na\nB\nb\nb\nC\na\nA\n' >"$tmp/ci"
 compare "default"
 compare "-c"       -c
 compare "-d"       -d
 compare "-u"       -u
+compare "-i"       -i
+compare "-ic"      -ic
+compare "-id"      -id
+# -i against a mixed-case file
+u=$("$BIN" -i "$tmp/ci" | norm); r=$("$REF" -i "$tmp/ci" | norm)
+[ "$u" = "$r" ] || { echo "FAIL diff [-i mixed]: [$u] != [$r]"; fail=1; }
 
 # Fuzz over random adjacent-duplicate streams.
 i=0

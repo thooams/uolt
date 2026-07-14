@@ -25,6 +25,12 @@ norm() { tr -s ' ' | sed 's/^ //;s/ $//'; }
 # -u: only runs that occur once.
 [ "$(printf 'a\na\nb\nc\nc\n' | "$BIN" -u | tr '\n' ',')" = "b," ] || { echo "FAIL unit: -u"; fail=1; }
 
+# -i: case-insensitive run detection (keeps the first spelling).
+[ "$(printf 'Apple\napple\nAPPLE\nbanana\n' | "$BIN" -i | tr '\n' ',')" = "Apple,banana," ] \
+    || { echo "FAIL unit: -i"; fail=1; }
+[ "$(printf 'a\nA\nb\n' | "$BIN" -ic | norm | tr '\n' ',')" = "2 a,1 b," ] \
+    || { echo "FAIL unit: -ic"; fail=1; }
+
 # File input.
 printf 'p\np\nq\n' >"$tmp/f"
 [ "$("$BIN" "$tmp/f" | tr '\n' ',')" = "p,q," ] || { echo "FAIL unit: file input"; fail=1; }

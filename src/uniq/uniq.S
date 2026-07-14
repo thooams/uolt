@@ -73,6 +73,8 @@ uolt_main:
     je      1f
     cmp     cl, 'u'
     je      1f
+    cmp     cl, 'i'
+    je      1f
     jmp     .input                      // unknown -> a file operand
 1:
     inc     rdi
@@ -95,6 +97,10 @@ uolt_main:
     jne     4f
     or      qword ptr [rbp + LOC_FLAGS], 4
 4:
+    cmp     cl, 'i'
+    jne     9f
+    or      qword ptr [rbp + LOC_FLAGS], 8
+9:
     inc     rdi
     jmp     .ap
 .apd:
@@ -215,7 +221,23 @@ take_line:
     cmp     rcx, r12
     je      .tl_same
     mov     al, [rbx + rcx]
-    cmp     al, [r14 + rcx]
+    mov     dl, [r14 + rcx]
+    test    qword ptr [rbp + LOC_FLAGS], 8      // -i: fold ASCII case
+    jz      .tl_c2
+    cmp     al, 'A'
+    jb      7f
+    cmp     al, 'Z'
+    ja      7f
+    add     al, 0x20
+7:
+    cmp     dl, 'A'
+    jb      8f
+    cmp     dl, 'Z'
+    ja      8f
+    add     dl, 0x20
+8:
+.tl_c2:
+    cmp     al, dl
     jne     .tl_diff
     inc     rcx
     jmp     .tl_cmp

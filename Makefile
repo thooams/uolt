@@ -101,11 +101,12 @@ EXTRA_sort     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S
 EXTRA_tee      := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/close.S libuolt/opendst.S libuolt/openapp.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/close.S $(SYSDIR)/opendst.S $(SYSDIR)/openapp.S
 EXTRA_uniq     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
 EXTRA_cut      := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
+EXTRA_tr       := libuolt/strlen.S libuolt/write.S libuolt/read.S $(SYSDIR)/write.S $(SYSDIR)/read.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
 # EXTRA_<name> line above.
-TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls seq grep find sort tee uniq env cut
+TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls seq grep find sort tee uniq env cut tr
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean
@@ -177,6 +178,8 @@ test: all
 	@sh tests/differential/env.sh
 	@sh tests/unit/cut.sh
 	@sh tests/differential/cut.sh
+	@sh tests/unit/tr.sh
+	@sh tests/differential/tr.sh
 	@sh tests/unit/sleep.sh
 	@sh tests/posix/sleep.sh
 	@sh tests/trace/sleep.sh

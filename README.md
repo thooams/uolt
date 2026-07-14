@@ -60,6 +60,7 @@ Sizes are shown as **uolt / system tool** so the gain is visible. "System" is th
 | `uolt-uniq`     | 1248 B / 39432 B (**32× smaller**) | 9144 B / 102160 B (**11× smaller**) | **~parity**       | < 2 KB |
 | `uolt-env`      | 496 B / 48072 B (**97× smaller**) | 6440 B / 102368 B (**16× smaller**) | **~parity**        | < 1 KB |
 | `uolt-cut`      | 1800 B / 39432 B (**22× smaller**) | 9840 B / 102480 B (**10× smaller**) | **~parity**        | < 2 KB |
+| `uolt-tr`       | 1040 B / 47624 B (**46× smaller**) | 7640 B / 135344 B (**18× smaller**) | **~parity**        | < 2 KB |
 
 Behavior: `uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
 trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical working
@@ -89,7 +90,7 @@ sorted and columns/`-l` are not yet supported); `uolt-seq` prints an integer seq
 (`-i` case-insensitive, `-v` invert; like `grep -F`, no regular expressions yet); `uolt-find`
 lists paths recursively (`-type f`/`d` filter; `-name` glob not yet supported); `uolt-sort`
 sorts lines in C-locale byte order (`-r` reverse; input is held in a 1 MB buffer, `-n`/`-u` not
-yet supported); `uolt-tee` copies stdin to stdout and to each file (`-a` appends). `uolt-uniq` collapses adjacent duplicate lines (`-c` count, `-d` duplicated, `-u` unique). `uolt-env` prints the environment (running a command is not yet supported). `uolt-cut` selects character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges. All ignore
+yet supported); `uolt-tee` copies stdin to stdout and to each file (`-a` appends). `uolt-uniq` collapses adjacent duplicate lines (`-c` count, `-d` duplicated, `-u` unique). `uolt-env` prints the environment (running a command is not yet supported). `uolt-cut` selects character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges. `uolt-tr` translates or (with `-d`) deletes bytes (sets support `a-z` ranges). All ignore
 unrelated arguments.
 
 The `uolt-wc` speedup is large because it counts bytes in the C locale; the stock `wc` does

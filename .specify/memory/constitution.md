@@ -1,14 +1,21 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.4.0 → 1.5.0
+Bump rationale: MINOR. Hardens Principle VIII with an explicit scope line: an option MAY be
+  implemented iff POSIX specifies it for that tool; no GNU-only options; exactly one
+  POSIX-first library and binary per tool (no "extended"/dual build, no runtime extended-mode
+  flag). Grandfathers the closed set of BSD+GNU-universal extras already shipped (`seq` and
+  its `-s`/`-w`, `grep -w`, `find -maxdepth`). No existing rule is redefined or removed.
+
+Prior amendment history below.
+
 Version change: 1.3.0 → 1.4.0
 Bump rationale: MINOR. Adds an explicit performance-vs-reference gate: each tool MUST be at
   least as fast as the standard tool it replaces (ideally faster), measured with hyperfine on
   the primary benchmark platform (Linux x86_64); where process-spawn overhead dominates
   (macOS), parity within measurement noise satisfies the rule. Folded into Principle XI and
   the quality gates. No existing rule is redefined or removed.
-
-Prior amendment history below.
 
 Version change: 1.2.0 → 1.3.0
 Bump rationale: MINOR. Makes Principle III platform-aware so native macOS binaries are
@@ -122,10 +129,27 @@ speculative optimization without a measurement backing it.
 
 ### VIII. POSIX, Not GNU
 Tools target POSIX behavior, not GNU. Core utilities (`pwd`, `ls`, `cp`, `mv`, `mkdir`,
-`touch`, `cat`, ...) MUST behave as POSIX expects. The dozens of GNU-only options MAY wait;
-supported options and any intentional deviation MUST be documented per tool.
-**Rationale**: POSIX is a stable, achievable contract; chasing GNU breadth first would sink
-the size and simplicity goals.
+`touch`, `cat`, ...) MUST behave as POSIX expects. Supported options and any intentional
+deviation MUST be documented per tool.
+
+**Scope line (single POSIX-first library).** A tool option MAY be implemented if and only if
+POSIX specifies that option for that tool. GNU-only (or otherwise non-POSIX) options are OUT
+of scope and MUST NOT be added. There is exactly ONE library and ONE binary per tool: the
+project MUST NOT grow a second "extended"/GNU build, nor a runtime mode flag that toggles
+extra behavior — a dual mode would double the test surface and inflate binary size, defeating
+Principles IV and VI. The clean side effect of this line: POSIX-specified options are the set
+on which BSD and GNU generally agree, so each is differential-testable against the system tool
+on both platforms without special-casing; a case that needs a BSD-vs-GNU gate is a signal that
+the option is drifting past POSIX.
+
+**Grandfathered extras.** A small number of non-POSIX but BSD+GNU-universal options predate
+this line and MAY remain (they are already implemented and tested): `seq` and its `-s`/`-w`
+(the whole tool is non-POSIX), `grep -w`, and `find -maxdepth`. This list is closed: no
+further non-POSIX options may be added under it.
+
+**Rationale**: POSIX is a stable, achievable contract on which the two reference
+implementations agree; chasing GNU breadth, or splitting into POSIX/extended builds, would
+sink the size and simplicity goals and the byte-for-byte differential guarantee.
 
 ### IX. Readable & Explicit
 No magic code. Prefer named constants over bare numbers (`mov rax, SYS_WRITE`, never
@@ -268,4 +292,4 @@ writing and either approved or corrected before merge.
 Compliance is reviewed on every change through the quality gates above. Complexity that
 violates a principle MUST be justified or removed.
 
-**Version**: 1.4.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-12
+**Version**: 1.5.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-14

@@ -34,6 +34,17 @@ layer that is not strictly necessary:
 
 See [the constitution](.specify/memory/constitution.md) for the full governing principles.
 
+## Scope: POSIX-first, one library
+
+UOLT is a **single POSIX-first library** — one binary per tool, no second "extended" build and
+no runtime mode flag. The rule is simple: **a tool option is implemented if and only if POSIX
+specifies it for that tool.** GNU-only options are out of scope. This keeps every tool small and,
+as a bonus, differential-testable against the system tool on both Linux (GNU) and macOS (BSD),
+since POSIX options are the ones the two implementations agree on.
+
+A closed, grandfathered set of non-POSIX but BSD+GNU-universal extras predates this rule and
+stays: `seq` (and its `-s`/`-w`), `grep -w`, and `find -maxdepth`. Nothing further is added to it.
+
 ## The whole suite at a glance
 
 <table>

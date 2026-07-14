@@ -1,9 +1,11 @@
 // src/sort/sort.S - the `sort` utility (lexicographic).
 //
-// sort [-r] [file...]: read all input lines, sort them in C-locale byte order
-// (-r reverses), and write them out. With no file operand standard input is
-// read; several files are concatenated. Numeric (-n), unique (-u), key, and
-// merge options are out of scope in v1.
+// sort [-rnufb] [file...]: read all input lines, sort them in C-locale byte
+// order, and write them out. -r reverses, -n compares leading integers, -u drops
+// adjacent equal-key lines, -f folds case, -b ignores leading blanks. With no
+// file operand standard input is read; several files are concatenated. Key
+// (-k/-t) and merge options are out of scope in v1. Ties keep input order
+// (stable), where GNU's default last-resort compare may differ.
 //
 // Sorting needs all the lines at once, which has no unbounded heap-free form, so
 // the input is held in a fixed 1 MB text buffer with a fixed line-pointer array,
@@ -81,8 +83,18 @@ uolt_main:
     jmp     .optfn
 6:
     cmp     cl, 'u'
-    jne     .files                      // unknown letter -> treat as an operand
+    jne     7f
     or      qword ptr [rbp - 48], 4
+    jmp     .optfn
+7:
+    cmp     cl, 'f'
+    jne     8f
+    or      qword ptr [rbp - 48], 8
+    jmp     .optfn
+8:
+    cmp     cl, 'b'
+    jne     .files                      // unknown letter -> treat as an operand
+    or      qword ptr [rbp - 48], 16
 .optfn:
     inc     r11
     jmp     .optf
@@ -200,7 +212,7 @@ uolt_main:
     jz      .em_print
     mov     rdi, [r15 + rbx*8 - 8]
     mov     rsi, [r15 + rbx*8]
-    call    line_cmp
+    call    key_cmp                     // -u dedups on key equality, not last-resort
     test    rax, rax
     jz      .em_skip
     mov     rdi, [r15 + rbx*8]
@@ -242,15 +254,88 @@ read_into:
     pop     rbx
     ret
 
-// line_cmp(rdi = a, rsi = b) -> rax: <0 if a<b, 0 if equal, >0 if a>b. Byte
-// comparison of NUL-terminated strings, or numeric (leading integer) under -n.
+// line_cmp(rdi = a, rsi = b) -> rax: the ordering comparison. It compares the
+// keys (key_cmp) and, when they tie, falls back to a raw byte comparison of the
+// whole lines - matching GNU sort's default last-resort compare so that
+// fold/blank/numeric ties are ordered deterministically the same way.
 line_cmp:
+    push    rdi
+    push    rsi
+    call    key_cmp
+    test    rax, rax
+    jnz     .lc_done
+    // keys tie: last-resort raw byte comparison of the whole originals (inlined
+    // with dot-local labels so it stays in this atom on Mach-O).
+    pop     rsi
+    pop     rdi
+    xor     rcx, rcx
+.lc_raw:
+    movzx   eax, byte ptr [rdi + rcx]
+    movzx   edx, byte ptr [rsi + rcx]
+    cmp     eax, edx
+    jne     .lc_rdiff
+    test    eax, eax
+    jz      .lc_req
+    inc     rcx
+    jmp     .lc_raw
+.lc_rdiff:
+    sub     eax, edx
+    cdqe
+    ret
+.lc_req:
+    xor     eax, eax
+    ret
+.lc_done:
+    add     rsp, 16
+    ret
+
+// key_cmp(rdi = a, rsi = b) -> rax: <0/0/>0 comparing the sort keys only. Byte
+// comparison of NUL-terminated strings with -f (fold) and -b (ignore leading
+// blanks), or numeric (leading integer) under -n. Used directly by -u to decide
+// key equality (no last-resort tiebreak).
+key_cmp:
     test    qword ptr [rbp - 48], 2     // -n: numeric compare
     jnz     num_cmp
+    // -b: ignore leading blanks in each operand (advance past space/tab).
+    test    qword ptr [rbp - 48], 16
+    jz      .lc_scan
+.lc_ba:
+    movzx   eax, byte ptr [rdi]
+    cmp     al, ' '
+    je      1f
+    cmp     al, 0x09
+    jne     .lc_bb
+1:
+    inc     rdi
+    jmp     .lc_ba
+.lc_bb:
+    movzx   eax, byte ptr [rsi]
+    cmp     al, ' '
+    je      1f
+    cmp     al, 0x09
+    jne     .lc_scan
+1:
+    inc     rsi
+    jmp     .lc_bb
+.lc_scan:
     xor     rcx, rcx
 1:
     movzx   eax, byte ptr [rdi + rcx]
     movzx   edx, byte ptr [rsi + rcx]
+    test    qword ptr [rbp - 48], 8     // -f: fold ASCII upper -> lower
+    jz      4f
+    cmp     al, 'A'
+    jb      7f
+    cmp     al, 'Z'
+    ja      7f
+    add     al, 0x20
+7:
+    cmp     dl, 'A'
+    jb      4f
+    cmp     dl, 'Z'
+    ja      4f
+    add     dl, 0x20
+4:
     cmp     eax, edx
     jne     2f
     test    eax, eax

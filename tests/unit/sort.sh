@@ -45,6 +45,26 @@ printf 'q\nb\n' >"$tmp/g"
 [ "$(printf '3\n1\n3\n2\n1\n' | "$BIN" -nu | tr '\n' ',')" = "1,2,3," ] \
     || { echo "FAIL unit: -nu"; fail=1; }
 
+# -f: fold case. Case variants sort together; ties break on the raw bytes
+# (uppercase before lowercase), matching GNU/BSD last-resort order.
+[ "$(printf 'banana\nApple\napple\nBanana\n' | "$BIN" -f | tr '\n' ',')" = "Apple,apple,Banana,banana," ] \
+    || { echo "FAIL unit: -f"; fail=1; }
+
+# -b: ignore leading blanks in the comparison.
+[ "$(printf '  zebra\nant\n   bee\n' | "$BIN" -b | tr '\n' '|')" = "ant|   bee|  zebra|" ] \
+    || { echo "FAIL unit: -b"; fail=1; }
+
+# -bn: numeric after ignoring leading blanks.
+[ "$(printf '  30\n5\n 100\n' | "$BIN" -bn | tr '\n' ',')" = "5,  30, 100," ] \
+    || { echo "FAIL unit: -bn"; fail=1; }
+
+# -uf / -ub: uolt keeps the sort-order-first line of each equal-key run (a
+# deterministic choice; the system tools disagree on the representative here).
+[ "$(printf 'Foo\nfoo\nFOO\nbar\nBaz\n' | "$BIN" -uf | tr '\n' ',')" = "bar,Baz,FOO," ] \
+    || { echo "FAIL unit: -uf"; fail=1; }
+[ "$(printf '  x\nx\n y\nz\n z\n' | "$BIN" -ub | tr '\n' '|')" = "  x| y| z|" ] \
+    || { echo "FAIL unit: -ub"; fail=1; }
+
 # Empty input -> empty output, exit 0.
 : | "$BIN" >"$tmp/o"; { [ $? -eq 0 ] && [ ! -s "$tmp/o" ]; } || { echo "FAIL unit: empty"; fail=1; }
 

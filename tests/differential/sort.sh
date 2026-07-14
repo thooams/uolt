@@ -24,6 +24,29 @@ for o in -u -n -rn -nu -run; do
     cmp -s "$tmp/u" "$tmp/r" || { echo "FAIL diff: $o"; fail=1; }
 done
 
+# -f (fold) and -b (ignore leading blanks): ordering matches BSD and GNU because
+# both fall back to a raw last-resort compare on ties.
+printf 'banana\nApple\ncherry\nBanana\napple\nDelta\n' >"$tmp/fold"
+printf '  zebra\nant\n   bee\ncat\nzebra\nAnt\n' >"$tmp/blank"
+printf '  30\n5\n 5\n100\n  2\n' >"$tmp/bnum"
+for o in -f -rf -fb -rb; do
+    "$BIN" $o "$tmp/fold" >"$tmp/u"; LC_ALL=C "$REF" $o "$tmp/fold" >"$tmp/r"
+    cmp -s "$tmp/u" "$tmp/r" || { echo "FAIL diff: $o (fold)"; fail=1; }
+done
+for o in -b -fb; do
+    "$BIN" $o "$tmp/blank" >"$tmp/u"; LC_ALL=C "$REF" $o "$tmp/blank" >"$tmp/r"
+    cmp -s "$tmp/u" "$tmp/r" || { echo "FAIL diff: $o (blank)"; fail=1; }
+done
+for o in -bn -bnr; do
+    "$BIN" $o "$tmp/bnum" >"$tmp/u"; LC_ALL=C "$REF" $o "$tmp/bnum" >"$tmp/r"
+    cmp -s "$tmp/u" "$tmp/r" || { echo "FAIL diff: $o (bnum)"; fail=1; }
+done
+
+# Note: -u combined with -f/-b on key-colliding-but-distinct lines is left out of
+# the differential set: which representative of an equal-key run is kept is
+# underspecified and diverges between BSD (input-first) and GNU (last-resort
+# disabled), so uolt's deterministic choice is exercised in the unit test only.
+
 # Fuzz: random line sets.
 i=0
 while [ "$i" -lt 60 ]; do

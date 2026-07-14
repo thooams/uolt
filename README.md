@@ -157,52 +157,50 @@ reported for transparency and measured against the Linux target, not held to it.
 <details>
 <summary><b>Full behaviour &amp; flag notes</b></summary>
 
-`uolt-true` exits 0; `uolt-false` exits 1; `uolt-echo` joins args with spaces and a
-trailing newline (`-n` suppresses it, no `-e` escapes); `uolt-pwd` prints the physical
-working directory; `uolt-cat` concatenates its file operands (or stdin, also for the
-operand `-`) to stdout verbatim, in 64 KB blocks (`-u` is accepted and ignored — output
-is already unbuffered); `uolt-head` prints the first N lines (default 10, `-n` sets N;
-`-c` counts bytes) of each operand or stdin, with `==> name <==` headers when more than
-one file is given; `uolt-tail` prints the last N lines (default 10, `-n` sets N; `-n +N`
-starts at line N; `-c` counts bytes), seeking backwards on regular files so its cost
-tracks the output, not the file size (on a pipe it retains the last 64 KB); `uolt-wc`
-counts lines, words, bytes, and characters (`-l`/`-w`/`-c`/`-m` select; default
-lines/words/bytes), always in the order lines/words/chars/bytes, with a `total`
-line for multiple files (in the C locale a character is a byte, so `-m` equals `-c`); `uolt-yes` repeats its operands joined by
-spaces (or `y`) plus a newline forever, filling a 64 KB buffer to write in large blocks;
-`uolt-basename` prints the final component of a path (with an optional suffix removed) and
-`uolt-dirname` prints the directory part, both working purely on the argument bytes with
-no file access; `uolt-sleep` suspends for the sum of its time operands (decimal seconds
-with an optional `s`/`m`/`h`/`d` suffix); `uolt-mkdir` creates directories (`-p` makes
-parents and is idempotent, `-m MODE` sets the exact octal mode); `uolt-rmdir` removes
-empty directories (`-p` removes the ancestor chain); `uolt-touch` creates missing files
-and updates timestamps to now (`-c` skips creation); `uolt-ln` creates hard links (or
-symbolic with `-s`, replacing an existing target with `-f`, and links one or more sources
-into a directory when the final operand is one); `uolt-rm` removes files and, with `-r`,
-directory trees (`-f` ignores missing operands); `uolt-mv` renames a source to a target,
-or moves one or more sources into a directory (final operand being an existing directory);
-`uolt-cp` copies a file to a target, and with `-r` copies a directory tree, or copies one
-or more sources into an existing directory (mode preservation not yet supported);
-`uolt-chmod` sets permission bits from an octal or symbolic mode (`u+x`, `go-w`, `a=r`,
-`+X`, umask-aware); `uolt-ls` lists directory entries one per line (`-a` includes hidden
-entries; output is not sorted and columns/`-l` are not yet supported); `uolt-seq` prints
-an integer sequence (`seq [-s STRING] [-w] [first [incr]] last`, GNU separator semantics);
-`uolt-grep` prints input lines containing a fixed-string pattern (`-i` case-insensitive,
-`-v` invert, `-n` line numbers, `-c` count, `-w` word match, `-x` whole-line; like
-`grep -F`, no regex yet); `uolt-find` lists paths recursively (`-type f`/`d`/`l` filter,
-`-maxdepth N`, `-name` glob with `*`/`?`); `uolt-sort` sorts lines in C-locale byte order
-(`-r` reverse, `-n` numeric, `-u` unique, `-f` fold case, `-b` ignore leading blanks;
-input is held in a 1 MB buffer); `uolt-tee` copies stdin to stdout and to each file
-(`-a` appends); `uolt-uniq` collapses adjacent duplicate lines (`-c` count, `-d`
-duplicated, `-u` unique, `-i` case-insensitive, `-f N` skip fields, `-s N` skip chars);
-`uolt-env` runs a command with a modified environment (`-i` starts empty, `-u NAME`
-unsets, `NAME=VALUE` adds or overrides, PATH-searched unless the command has a `/`),
-or prints the environment when no command is given; `uolt-cut`
-selects character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges (`-s` drops
-lines with no delimiter); `uolt-tr` translates, deletes (`-d`), or squeezes repeats (`-s`)
-bytes, and `-c` complements set1 so the operation applies to every byte not listed
-(sets support `a-z` ranges); `uolt-comm` compares two sorted files in three columns
-(`-1`/`-2`/`-3` suppress columns). All ignore unrelated arguments.
+**Text output & shell helpers**
+
+- **`true`** — exit 0.
+- **`false`** — exit 1.
+- **`echo`** — join arguments with spaces and a trailing newline. `-n` suppresses the newline (no `-e` escapes).
+- **`pwd`** — print the physical working directory.
+- **`yes`** — repeat the operands (or `y`) plus a newline forever, filling a 64 KB buffer to write in large blocks.
+- **`seq`** — print an integer sequence: `seq [-s STRING] [-w] [first [incr]] last` (GNU separator semantics).
+- **`env`** — run a command with a modified environment: `-i` starts empty, `-u NAME` unsets, `NAME=VALUE` adds or overrides; the command is PATH-searched unless it contains a `/`. With no command, print the environment.
+- **`sleep`** — suspend for the sum of the time operands (decimal seconds, optional `s`/`m`/`h`/`d` suffix).
+- **`basename`** — print the final component of a path (optional suffix removed); works on the argument bytes only, no file access.
+- **`dirname`** — print the directory part of a path; argument bytes only.
+
+**File contents**
+
+- **`cat`** — concatenate operands (or stdin, also for `-`) verbatim in 64 KB blocks. `-u` is accepted and ignored (output is already unbuffered).
+- **`head`** — print the first N lines (default 10; `-n` sets N, `-c` counts bytes), with `==> name <==` headers for more than one file.
+- **`tail`** — print the last N lines (default 10; `-n` sets N, `-n +N` starts at line N, `-c` counts bytes). Seeks backwards on regular files so cost tracks the output, not the file size; retains the last 64 KB on a pipe.
+- **`wc`** — count lines / words / bytes / characters (`-l`/`-w`/`-c`/`-m`; default lines/words/bytes), always in the order lines/words/chars/bytes, with a `total` line for multiple files. In the C locale `-m` equals `-c`.
+- **`tee`** — copy stdin to stdout and to each file. `-a` appends.
+
+**Text processing**
+
+- **`grep`** — print input lines containing a fixed-string pattern (like `grep -F`, no regex yet). `-i` case-insensitive, `-v` invert, `-n` line numbers, `-c` count, `-w` word match, `-x` whole line.
+- **`sort`** — sort lines in C-locale byte order (input held in a 1 MB buffer). `-r` reverse, `-n` numeric, `-u` unique, `-f` fold case, `-b` ignore leading blanks.
+- **`uniq`** — collapse adjacent duplicate lines. `-c` count, `-d` duplicated only, `-u` unique only, `-i` case-insensitive, `-f N` skip fields, `-s N` skip chars.
+- **`cut`** — select character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges. `-s` drops lines with no delimiter.
+- **`tr`** — translate, delete (`-d`), or squeeze repeats (`-s`) bytes; `-c` complements set1 so the operation applies to every byte not listed. Sets support `a-z` ranges.
+- **`comm`** — compare two sorted files in three columns. `-1`/`-2`/`-3` suppress columns.
+
+**Filesystem**
+
+- **`ls`** — list directory entries one per line. `-a` includes hidden entries. Output is not sorted; columns / `-l` are not yet supported.
+- **`find`** — list paths recursively. `-type f`/`d`/`l` filter, `-maxdepth N`, `-name` glob with `*`/`?`.
+- **`mkdir`** — create directories. `-p` makes parents and is idempotent; `-m MODE` sets the exact octal mode.
+- **`rmdir`** — remove empty directories. `-p` removes the ancestor chain.
+- **`touch`** — create missing files and update timestamps to now. `-c` skips creation.
+- **`ln`** — create hard links, or symbolic with `-s`; `-f` replaces an existing target; links one or more sources into a directory when the final operand is one.
+- **`rm`** — remove files, and with `-r` directory trees. `-f` ignores missing operands.
+- **`mv`** — rename a source to a target, or move one or more sources into a directory (final operand being an existing directory).
+- **`cp`** — copy a file to a target, with `-r` a directory tree, or one or more sources into an existing directory (mode preservation not yet supported).
+- **`chmod`** — set permission bits from an octal or symbolic mode (`u+x`, `go-w`, `a=r`, `+X`, umask-aware).
+
+All tools ignore unrelated arguments.
 
 </details>
 

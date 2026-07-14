@@ -1,9 +1,11 @@
 // src/uniq/uniq.S - the POSIX `uniq` utility.
 //
-// uniq [-c] [-d] [-u] [file]: collapse adjacent identical lines. Default prints
-// one line per run; -c prefixes each with its repeat count; -d prints only runs
-// that repeat; -u prints only runs that occur once. Input is the file operand or
-// standard input.
+// uniq [-c] [-d] [-u] [-i] [-f N] [-s N] [file]: collapse adjacent identical
+// lines. Default prints one line per run; -c prefixes each with its repeat count;
+// -d prints only runs that repeat; -u prints only runs that occur once; -i folds
+// case when comparing. -f N ignores the first N blank-separated fields and -s N
+// ignores the next N characters when deciding whether lines match (the whole line
+// is still printed). Input is the file operand or standard input.
 //
 // Input is read in 64 KB blocks and split into lines (no heap, Principle IV);
 // the current run's line is kept in a separate 64 KB buffer with its count so it
@@ -29,6 +31,10 @@
 .set LOC_PLEN,  -64
 .set LOC_COUNT, -72
 .set LOC_CH,    -80
+.set LOC_SKIPF, -112           // -f: fields to skip before comparing
+.set LOC_SKIPS, -120           // -s: chars to skip (after the fields)
+// NB: put_count uses [rbp-88] and ~20 bytes below it as its digit scratch, so
+// these locals sit below that range to avoid being clobbered by a -c count.
 
 .text
 .globl uolt_main
@@ -46,6 +52,8 @@ uolt_main:
     mov     qword ptr [rbp + LOC_FLAGS], 0
     mov     qword ptr [rbp + LOC_HAVE], 0
     mov     qword ptr [rbp + LOC_COUNT], 0
+    mov     qword ptr [rbp + LOC_SKIPF], 0
+    mov     qword ptr [rbp + LOC_SKIPS], 0
 
     mov     r12, rdi
     dec     r12
@@ -61,6 +69,10 @@ uolt_main:
     je      .input                      // "-" = stdin operand
     cmp     byte ptr [rbx + 1], '-'
     je      .ddash
+    cmp     byte ptr [rbx + 1], 'f'     // -f N / -fN : skip fields
+    je      .opt_f
+    cmp     byte ptr [rbx + 1], 's'     // -s N / -sN : skip chars
+    je      .opt_s
     lea     rdi, [rbx + 1]              // validate c/d/u
     mov     rsi, rdi
 .v:
@@ -112,6 +124,35 @@ uolt_main:
     jne     .input
     add     r13, 8
     dec     r12
+    jmp     .input
+.opt_f:
+    lea     rdi, [rbx + 2]              // "-fN" attached, or "-f" then next arg
+    cmp     byte ptr [rdi], 0
+    jne     1f
+    add     r13, 8
+    dec     r12
+    jz      .input
+    mov     rdi, [r13]
+1:
+    call    parse_uint
+    mov     [rbp + LOC_SKIPF], rax
+    add     r13, 8
+    dec     r12
+    jmp     .opt
+.opt_s:
+    lea     rdi, [rbx + 2]
+    cmp     byte ptr [rdi], 0
+    jne     1f
+    add     r13, 8
+    dec     r12
+    jz      .input
+    mov     rdi, [r13]
+1:
+    call    parse_uint
+    mov     [rbp + LOC_SKIPS], rax
+    add     r13, 8
+    dec     r12
+    jmp     .opt
 
 .input:
     test    r12, r12
@@ -213,15 +254,31 @@ take_line:
     mov     r12, rsi                    // line length
     cmp     qword ptr [rbp + LOC_HAVE], 0
     je      .tl_new
-    // same as prev? compare length then bytes
-    cmp     r12, [rbp + LOC_PLEN]
-    jne     .tl_diff
+    // Compare the two lines from their comparison start (after -f fields and -s
+    // chars). r10 = prev start offset, r11 = current start offset, r13 = the
+    // (equal) suffix length being compared.
+    mov     rdi, r14
+    mov     rsi, [rbp + LOC_PLEN]
+    call    skip_offset
+    mov     r10, rax
+    mov     rdi, rbx
+    mov     rsi, r12
+    call    skip_offset
+    mov     r11, rax
+    mov     rax, [rbp + LOC_PLEN]
+    sub     rax, r10                    // prev suffix length
+    mov     r13, r12
+    sub     r13, r11                    // current suffix length
+    cmp     rax, r13
+    jne     .tl_diff                    // suffix lengths differ -> not equal
+    lea     r8, [r14 + r10]             // prev suffix base (3-reg addressing is invalid)
+    lea     r9, [rbx + r11]             // current suffix base
     xor     rcx, rcx
 .tl_cmp:
-    cmp     rcx, r12
+    cmp     rcx, r13
     je      .tl_same
-    mov     al, [rbx + rcx]
-    mov     dl, [r14 + rcx]
+    mov     al, [r8 + rcx]
+    mov     dl, [r9 + rcx]
     test    qword ptr [rbp + LOC_FLAGS], 8      // -i: fold ASCII case
     jz      .tl_c2
     cmp     al, 'A'
@@ -328,6 +385,68 @@ put_count:
     mov     rsi, rdi
     mov     rdi, STDOUT
     jmp     uolt_write
+
+// skip_offset(rdi = line ptr, rsi = line length) -> rax = comparison start: the
+// offset after skipping -f fields (leading blanks then non-blanks, repeated) and
+// then -s characters. Clobbers rax/rcx/r9 only.
+skip_offset:
+    xor     rax, rax                    // i
+    mov     r9, [rbp + LOC_SKIPF]
+.so_field:
+    test    r9, r9
+    jz      .so_chars
+.so_bl:
+    cmp     rax, rsi                    // skip leading blanks
+    jae     .so_done
+    movzx   ecx, byte ptr [rdi + rax]
+    cmp     cl, ' '
+    je      1f
+    cmp     cl, 0x09
+    jne     .so_nb
+1:
+    inc     rax
+    jmp     .so_bl
+.so_nb:
+    cmp     rax, rsi                    // skip the field (non-blanks)
+    jae     .so_done
+    movzx   ecx, byte ptr [rdi + rax]
+    cmp     cl, ' '
+    je      .so_fdone
+    cmp     cl, 0x09
+    je      .so_fdone
+    inc     rax
+    jmp     .so_nb
+.so_fdone:
+    dec     r9
+    jmp     .so_field
+.so_chars:
+    mov     r9, [rbp + LOC_SKIPS]
+.so_cl:
+    test    r9, r9
+    jz      .so_done
+    cmp     rax, rsi
+    jae     .so_done
+    inc     rax
+    dec     r9
+    jmp     .so_cl
+.so_done:
+    ret
+
+// parse_uint(rdi = ASCIZ) -> rax = leading unsigned decimal (0 if none).
+parse_uint:
+    xor     rax, rax
+.pu_l:
+    movzx   ecx, byte ptr [rdi]
+    sub     cl, '0'
+    cmp     cl, 9
+    ja      .pu_d
+    imul    rax, rax, 10
+    movzx   rcx, cl
+    add     rax, rcx
+    inc     rdi
+    jmp     .pu_l
+.pu_d:
+    ret
 
 err_puts:
     mov     r10, rdi

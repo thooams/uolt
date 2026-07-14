@@ -31,6 +31,26 @@ compare "-id"      -id
 u=$("$BIN" -i "$tmp/ci" | norm); r=$("$REF" -i "$tmp/ci" | norm)
 [ "$u" = "$r" ] || { echo "FAIL diff [-i mixed]: [$u] != [$r]"; fail=1; }
 
+# -f (skip fields) and -s (skip chars) against structured input.
+printf '1 apple\n2 apple\n3 grape\n4 grape\n5 apple\n' >"$tmp/fld"
+printf 'xxred\nyyred\nzzblue\nqqblue\nwwred\n' >"$tmp/chr"
+comparef() {
+    desc=$1; file=$2; shift 2
+    u=$("$BIN" "$@" <"$file" 2>/dev/null | norm)
+    r=$("$REF" "$@" <"$file" 2>/dev/null | norm)
+    [ "$u" = "$r" ] || { echo "FAIL diff [$desc]: [$u] != [$r]"; fail=1; }
+}
+comparef "-f1"      "$tmp/fld" -f1
+comparef "-f 1"     "$tmp/fld" -f 1
+comparef "-c -f1"   "$tmp/fld" -c -f1
+comparef "-d -f1"   "$tmp/fld" -d -f1
+comparef "-u -f1"   "$tmp/fld" -u -f1
+comparef "-s2"      "$tmp/chr" -s2
+comparef "-s 2"     "$tmp/chr" -s 2
+comparef "-c -s2"   "$tmp/chr" -c -s2
+printf '  a x\n  a y\nb x\n' >"$tmp/blk"
+comparef "-f1 blanks" "$tmp/blk" -f1
+
 # Fuzz over random adjacent-duplicate streams.
 i=0
 while [ "$i" -lt 40 ]; do

@@ -35,6 +35,20 @@ norm() { tr -s ' ' | sed 's/^ //;s/ $//'; }
 printf 'p\np\nq\n' >"$tmp/f"
 [ "$("$BIN" "$tmp/f" | tr '\n' ',')" = "p,q," ] || { echo "FAIL unit: file input"; fail=1; }
 
+# -f N: ignore the first N fields when comparing (the whole line is printed).
+[ "$(printf '1 a\n2 a\n3 b\n' | "$BIN" -f1 | tr '\n' ',')" = "1 a,3 b," ] \
+    || { echo "FAIL unit: -f1"; fail=1; }
+[ "$(printf 'x y z\nq y w\nx w z\n' | "$BIN" -f2 | tr '\n' ',')" = "x y z,q y w,x w z," ] \
+    || { echo "FAIL unit: -f2"; fail=1; }
+
+# -s N: ignore the first N characters when comparing.
+[ "$(printf 'axfoo\nbxfoo\ncybar\n' | "$BIN" -s2 | tr '\n' ',')" = "axfoo,cybar," ] \
+    || { echo "FAIL unit: -s2"; fail=1; }
+
+# -f with -c counts the collapsed run.
+[ "$(printf 'a k\nb k\nc j\n' | "$BIN" -c -f1 | norm | tr '\n' ',')" = "2 a k,1 c j," ] \
+    || { echo "FAIL unit: -c -f1"; fail=1; }
+
 # A final line without a trailing newline is still handled.
 printf 'z\nz\nw' >"$tmp/g"
 [ "$("$BIN" "$tmp/g" | tr '\n' ',')" = "z,w," ] || { echo "FAIL unit: no trailing newline"; fail=1; }

@@ -1,11 +1,11 @@
 // src/cut/cut.S - the POSIX `cut` utility.
 //
 // cut -c LIST [file...]              select 1-based character positions
-// cut -f LIST [-d DELIM] [file...]   select delimiter-separated fields
+// cut -f LIST [-d DELIM] [-s] [file...]   select delimiter-separated fields
 //
 // LIST is a comma-separated list of positions and ranges: N, N-M, N- (to end of
 // line), -M (from the start). For -f the default delimiter is a tab; a line with
-// no delimiter is passed through unchanged (no -s). Selected positions live in a
+// no delimiter is passed through unchanged, unless -s drops it. Selected positions live in a
 // bitmap (plus an open-ended threshold) on the stack (no heap, Principle IV);
 // input is read in 64 KB blocks and split into lines.
 //
@@ -31,6 +31,7 @@
 .set LOC_CH,    -80
 .set LOC_ARGC,  -88
 .set LOC_ARGV,  -96
+.set LOC_S,     -104
 
 .text
 .globl uolt_main
@@ -52,6 +53,7 @@ uolt_main:
     mov     byte ptr [rbp + LOC_DELIM], 0x09
     mov     qword ptr [rbp + LOC_TOEND], 0
     mov     qword ptr [rbp + LOC_STAT], 0
+    mov     qword ptr [rbp + LOC_S], 0
     // clear the bitmap
     lea     rdi, [r15 + BUFSZ]
     xor     eax, eax
@@ -75,9 +77,18 @@ uolt_main:
     je      .opt_list
     cmp     al, 'd'
     je      .opt_delim
+    cmp     al, 's'
+    je      .opt_s
     cmp     al, '-'
     je      .opt_ddash
     jmp     .after
+.opt_s:
+    cmp     byte ptr [rbx + 2], 0           // only the standalone "-s" form
+    jne     .after
+    mov     qword ptr [rbp + LOC_S], 1
+    add     r13, 8
+    dec     r12
+    jmp     .opt
 .opt_list:
     mov     [rbp + LOC_MODE], al
     lea     rdi, [rbx + 2]
@@ -284,11 +295,19 @@ cut_line:
     inc     r8
     jmp     .cl_hasd
 .cl_whole:
+    cmp     qword ptr [rbp + LOC_S], 0      // -s: drop lines without a delimiter
+    jne     .cl_suppress
     mov     rsi, rbx
     mov     rdx, r12
     mov     rdi, STDOUT
     call    uolt_write
     jmp     .cl_nl
+.cl_suppress:
+    pop     r14
+    pop     r13
+    pop     r12
+    pop     rbx
+    ret
 .cl_split:
     // walk fields; r13 = field index (1-based), r14 = field start, r9 = "output any"
     mov     r13, 1
@@ -494,6 +513,6 @@ err_puts:
     mov     rdi, STDERR
     jmp     uolt_write
 
-err_usage: .asciz "uolt-cut: usage: cut -c LIST | -f LIST [-d DELIM] [file...]\n"
+err_usage: .asciz "uolt-cut: usage: cut -c LIST | -f LIST [-d DELIM] [-s] [file...]\n"
 err_pre:   .asciz "uolt-cut: "
 err_suf:   .asciz ": cannot open\n"

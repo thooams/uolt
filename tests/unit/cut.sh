@@ -16,6 +16,8 @@ ck "a:c"     "$(printf 'a:b:c:d\n' | "$BIN" -f1,3 -d:)"  "-f list"
 ck "2,3,4"   "$(printf '1,2,3,4\n'  | "$BIN" -f2- -d,)"  "-f open"
 ck "b"       "$(printf 'a b c\n'    | "$BIN" -f2 -d' ')" "-f space delim"
 ck "nodelim" "$(printf 'nodelim\n'  | "$BIN" -f1 -d:)"   "-f no-delim passthrough"
+ck ""        "$(printf 'nodelim\n'  | "$BIN" -s -f1 -d:)" "-s drops no-delim"
+ck "b"       "$(printf 'a:b\nnodelim\n' | "$BIN" -s -f2 -d:)" "-s keeps delim line"
 
 # LIST attached vs separate argument.
 ck "ab" "$(printf 'abcd\n' | "$BIN" -c 1-2)" "-c separate list"

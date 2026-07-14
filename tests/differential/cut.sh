@@ -30,6 +30,11 @@ compare "$tmp/f" -f1,3 -d:
 compare "$tmp/f" -f2- -d:
 compare "$tmp/f" -f-2 -d:
 compare "$tmp/f" -f5 -d:
+# -s: drop lines with no delimiter
+compare "$tmp/f" -s -f1 -d:
+compare "$tmp/f" -s -f2 -d:
+compare "$tmp/f" -s -f2- -d:
+compare "$tmp/f" -s -f1,3 -d:
 
 [ "$fail" -eq 0 ] && echo "PASS differential/cut (ref: $REF)"
 exit "$fail"

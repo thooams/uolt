@@ -1,7 +1,10 @@
 #!/bin/sh
-# Syscall-trace test for uolt-tail: it may open/read/close/lseek files and write
-# (plus exit); it must never allocate (mmap/brk). Best-effort like the other
-# trace tests: fails on a real violation, SKIPs when tracing is unavailable.
+# Syscall-trace test for uolt-tail on a regular (seekable) file: it may
+# open/read/close/lseek and write (plus exit), and that path must stay
+# allocation-free (no mmap/brk) - it seeks instead of buffering. (The
+# non-seekable pipe path deliberately slurps via mmap; it is not traced here.)
+# Best-effort like the other trace tests: fails on a real violation, SKIPs when
+# tracing is unavailable.
 set -u
 BIN=${UOLT_TAIL:-${BUILD:-./build}/uolt-tail}
 tmp=$(mktemp -d)

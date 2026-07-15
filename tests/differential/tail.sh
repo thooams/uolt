@@ -52,5 +52,17 @@ for n in 1 5 50; do
     cmp -s "$tmp/uo" "$tmp/ro" || { echo "FAIL diff [stdin -n$n]: stdout differs"; fail=1; }
 done
 
+# Large non-seekable input whose last N lines exceed the old 64 KB window: the
+# regression guard against pipe truncation (the growable mmap slurp handles it).
+awk 'BEGIN { for (i = 1; i <= 4000; i++) { s = "line" i " "; while (length(s) < 100) s = s "x"; print s } }' >"$tmp/big"
+for n in 1000 2000; do
+    cat "$tmp/big" | "$BIN" -n"$n" >"$tmp/uo" 2>/dev/null
+    cat "$tmp/big" | "$REF" -n"$n" >"$tmp/ro" 2>/dev/null
+    cmp -s "$tmp/uo" "$tmp/ro" || { echo "FAIL diff [pipe large -n$n]: stdout differs"; fail=1; }
+done
+cat "$tmp/big" | "$BIN" -c 150000 >"$tmp/uo" 2>/dev/null
+cat "$tmp/big" | "$REF" -c 150000 >"$tmp/ro" 2>/dev/null
+cmp -s "$tmp/uo" "$tmp/ro" || { echo "FAIL diff [pipe large -c]: stdout differs"; fail=1; }
+
 [ "$fail" -eq 0 ] && echo "PASS differential/tail (ref: $REF)"
 exit "$fail"

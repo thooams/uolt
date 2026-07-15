@@ -69,5 +69,19 @@ while [ "$i" -lt 40 ]; do
     i=$((i + 1))
 done
 
+# Lines far longer than the old 64 KB buffer: previously such a line was
+# mis-split into 64 KB pieces; the growable buffers now keep it whole. Regression
+# guard for adjacent long-line dedup and the run count.
+awk 'BEGIN {
+    s = ""; for (i = 0; i < 90000; i++) s = s "x"
+    t = ""; for (i = 0; i < 70000; i++) t = t "y"
+    print s; print s; print s; print t; print "short"; print t
+}' >"$tmp/long"
+for o in "" -c -d -u; do
+    u=$("$BIN" $o "$tmp/long" 2>/dev/null | norm)
+    r=$("$REF" $o "$tmp/long" 2>/dev/null | norm)
+    [ "$u" = "$r" ] || { echo "FAIL diff [long-line $o]"; fail=1; }
+done
+
 [ "$fail" -eq 0 ] && echo "PASS differential/uniq (ref: $REF)"
 exit "$fail"

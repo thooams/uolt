@@ -7,10 +7,14 @@
 // ignores the next N characters when deciding whether lines match (the whole line
 // is still printed). Input is the file operand or standard input.
 //
-// Input is read in 64 KB blocks and split into lines (no heap, Principle IV);
-// the current run's line is kept in a separate 64 KB buffer with its count so it
-// survives the input buffer refilling. A line longer than the buffer is treated
-// as one truncated line.
+// Input is streamed and split into lines; the current run's representative line
+// is kept in a separate buffer with its count so it survives the input buffer
+// refilling. Both buffers are mmap'd regions that GROW on demand (double, copy,
+// munmap), so a line of any length is handled without truncation - the limit is
+// memory. (Principle IV permits an explicit, failure-checked mmap when a fixed
+// buffer would drop or mis-split data; it is not a hidden heap.) uniq never holds
+// more than one input block plus the current representative line, so any number
+// of lines streams in constant memory regardless of the total input size.
 //
 // Called as uolt_main(argc in rdi, argv in rsi) by the per-OS entry shim.
 //
@@ -24,7 +28,8 @@
 .set STDOUT, 1
 .set STDERR, 2
 .set O_RDONLY, 0
-.set BUFSZ,  65536
+.set ICAP_START, 0x10000       // initial input block buffer: 64 KiB (grows)
+.set PCAP_START, 0x10000       // initial prev-line buffer: 64 KiB (grows)
 
 .set LOC_FLAGS, -48
 .set LOC_HAVE,  -56
@@ -35,6 +40,10 @@
 .set LOC_SKIPS, -120           // -s: chars to skip (after the fields)
 // NB: put_count uses [rbp-88] and ~20 bytes below it as its digit scratch, so
 // these locals sit below that range to avoid being clobbered by a -c count.
+.set LOC_ICAP,  -128           // input buffer capacity
+.set LOC_PCAP,  -136           // prev-line buffer capacity
+.set LOC_NC,    -144           // grow scratch: new capacity
+.set LOC_NB,    -152           // grow scratch: new base
 
 .text
 .globl uolt_main
@@ -46,18 +55,32 @@ uolt_main:
     push    r13
     push    r14
     push    r15
-    sub     rsp, 2*BUFSZ + 96
-    mov     r15, rsp                    // line buffer
-    lea     r14, [rsp + BUFSZ]          // prev-line buffer (kept across refills)
+    sub     rsp, 160
+    cld
+
+    // Capture argc/argv before mmap clobbers rdi/rsi (r12/r13 are callee-saved).
+    mov     r12, rdi
+    dec     r12
+    lea     r13, [rsi + 8]
+
+    mov     rdi, ICAP_START
+    call    uolt_mmap_anon
+    test    rax, rax
+    js      .nomem
+    mov     r15, rax                    // input block buffer
+    mov     qword ptr [rbp + LOC_ICAP], ICAP_START
+    mov     rdi, PCAP_START
+    call    uolt_mmap_anon
+    test    rax, rax
+    js      .nomem
+    mov     r14, rax                    // prev-line buffer
+    mov     qword ptr [rbp + LOC_PCAP], PCAP_START
+
     mov     qword ptr [rbp + LOC_FLAGS], 0
     mov     qword ptr [rbp + LOC_HAVE], 0
     mov     qword ptr [rbp + LOC_COUNT], 0
     mov     qword ptr [rbp + LOC_SKIPF], 0
     mov     qword ptr [rbp + LOC_SKIPS], 0
-
-    mov     r12, rdi
-    dec     r12
-    lea     r13, [rsi + 8]
 
 .opt:
     test    r12, r12
@@ -170,9 +193,14 @@ uolt_main:
 .run:
     xor     r13, r13                    // fill
 .rd:
-    mov     rdx, BUFSZ
-    sub     rdx, r13
-    jz      .longline
+    mov     rax, [rbp + LOC_ICAP]
+    sub     rax, r13                     // space left in the input buffer
+    jnz     1f
+    call    grow_input                  // one line filled it: grow, keep reading
+    mov     rax, [rbp + LOC_ICAP]
+    sub     rax, r13
+1:
+    mov     rdx, rax
     mov     rdi, r12
     lea     rsi, [r15 + r13]
     call    uolt_read
@@ -206,12 +234,6 @@ uolt_main:
     mov     r13, rcx
     rep     movsb
     jmp     .rd
-.longline:
-    mov     rdi, r15
-    mov     rsi, r13
-    call    take_line
-    xor     r13, r13
-    jmp     .rd
 .eof:
     test    r13, r13
     jz      .flush_last
@@ -234,13 +256,76 @@ uolt_main:
     call    err_puts
     mov     eax, 1
 .ret:
-    add     rsp, 2*BUFSZ + 96
+    add     rsp, 160
     pop     r15
     pop     r14
     pop     r13
     pop     r12
     pop     rbx
     pop     rbp
+    ret
+
+// Out-of-memory (a grow or the initial mmap failed): diagnose and exit 1. Unwinds
+// via rbp so it also works when reached from grow_input / ensure_prev.
+.nomem:
+    lea     rdi, [rip + err_nomem]
+    call    err_puts
+    mov     eax, 1
+    lea     rsp, [rbp - 40]
+    pop     r15
+    pop     r14
+    pop     r13
+    pop     r12
+    pop     rbx
+    pop     rbp
+    ret
+
+// grow_input(): double the input buffer, copy the r13 bytes held, unmap the old
+// one, update r15 / LOC_ICAP. Preserves r12 (fd), r13 (fill), r14, rbx.
+grow_input:
+    mov     rax, [rbp + LOC_ICAP]
+    add     rax, rax
+    mov     [rbp + LOC_NC], rax
+    mov     rdi, rax
+    call    uolt_mmap_anon
+    test    rax, rax
+    js      .nomem
+    mov     [rbp + LOC_NB], rax
+    mov     rdi, rax
+    mov     rsi, r15
+    mov     rcx, r13
+    rep     movsb
+    mov     rdi, r15
+    mov     rsi, [rbp + LOC_ICAP]
+    call    uolt_munmap
+    mov     r15, [rbp + LOC_NB]
+    mov     rax, [rbp + LOC_NC]
+    mov     [rbp + LOC_ICAP], rax
+    ret
+
+// ensure_prev(rax = needed bytes): make the prev-line buffer at least that large
+// (its old contents are not needed - the caller is about to overwrite it).
+// Preserves rbx / r12 / r13 (take_line's live registers).
+ensure_prev:
+    mov     rcx, [rbp + LOC_PCAP]
+    cmp     rcx, rax
+    jae     .ep_ok
+.ep_dbl:
+    add     rcx, rcx
+    cmp     rcx, rax
+    jb      .ep_dbl
+    mov     [rbp + LOC_NC], rcx
+    mov     rdi, r14                    // free the old buffer (contents unneeded)
+    mov     rsi, [rbp + LOC_PCAP]
+    call    uolt_munmap
+    mov     rdi, [rbp + LOC_NC]
+    call    uolt_mmap_anon
+    test    rax, rax
+    js      .nomem
+    mov     r14, rax
+    mov     rax, [rbp + LOC_NC]
+    mov     [rbp + LOC_PCAP], rax
+.ep_ok:
     ret
 
 // take_line(rdi = line ptr, rsi = length): compare with the current run; extend
@@ -304,7 +389,10 @@ take_line:
 .tl_diff:
     call    flush_run
 .tl_new:
-    // copy this line into the prev buffer
+    // copy this line into the prev buffer, growing it first if the line is longer
+    // than the buffer's current capacity.
+    mov     rax, r12
+    call    ensure_prev
     mov     [rbp + LOC_PLEN], r12
     xor     rcx, rcx
 .tl_copy:
@@ -456,5 +544,6 @@ err_puts:
     mov     rdi, STDERR
     jmp     uolt_write
 
-err_pre: .asciz "uolt-uniq: "
-err_suf: .asciz ": cannot open\n"
+err_pre:   .asciz "uolt-uniq: "
+err_suf:   .asciz ": cannot open\n"
+err_nomem: .asciz "uolt-uniq: out of memory\n"

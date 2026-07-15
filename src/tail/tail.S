@@ -14,10 +14,12 @@
 //     blocks backwards counting newlines until the Nth boundary is found; seek
 //     there and copy forward to EOF. Cost is proportional to the output, not the
 //     file size, so it keeps pace with the system tool on large files.
-//   * Non-seekable input (pipe/stdin, lseek returns -ESPIPE): stream forward
-//     into a sliding window that retains only the last 64 KB, then locate the
-//     last N lines inside it. If those lines exceed 64 KB the window caps the
-//     output at its last 64 KB (a documented no-heap limit).
+//   * Non-seekable input (pipe/stdin, lseek returns -ESPIPE): slurp the whole
+//     stream into a growable mmap region (double, copy, munmap), then locate the
+//     last N lines (or bytes) inside it. This is bounded only by memory - no
+//     silent truncation - and the region is released afterwards. (Principle IV
+//     permits an explicit, failure-checked mmap when a fixed buffer would drop
+//     data; it is not a hidden heap.)
 //
 // Called as uolt_main(argc in rdi, argv in rsi). A file that cannot be opened
 // yields a stderr diagnostic (no header), sets the exit status to 1, and does
@@ -38,10 +40,11 @@
 .set STDOUT,   1
 .set STDERR,   2
 .set O_RDONLY, 0
-.set BUFSZ,    65536            // block size and sliding-window retention
-.set DEFLINES, 10
-.set SEEK_SET, 0
-.set SEEK_END, 2
+.set BUFSZ,      65536          // block size (seekable backward scan)
+.set SLURP_START, 0x100000      // initial pipe-slurp region: 1 MiB (grows)
+.set DEFLINES,   10
+.set SEEK_SET,   0
+.set SEEK_END,   2
 
 .set LOC_REM,   -48
 .set LOC_HDR,   -56
@@ -54,6 +57,9 @@
 .set LOC_FB,    -96             // firstbyte flag (skip one trailing newline)
 .set LOC_CS,    -104            // current chunk size
 .set LOC_BYTES, -112            // -c mode: count bytes instead of lines
+.set LOC_SCAP,  -120            // pipe-slurp region capacity
+.set LOC_SNC,   -128            // grow scratch: new capacity
+.set LOC_SNB,   -136            // grow scratch: new base
 
 .text
 .globl uolt_main
@@ -65,9 +71,10 @@ uolt_main:
     push    r13
     push    r14
     push    r15
-    sub     rsp, 2*BUFSZ + 96   // sliding window (2*BUFSZ) + stack locals
+    sub     rsp, 2*BUFSZ + 192  // block buffer (2*BUFSZ) + stack locals
     mov     r15, rsp            // buffer base
     xor     r14, r14            // exit status 0
+    cld
 
     // --- Option parsing: N (default 10), plus flag; leave r13 at the first
     //     operand and the operand count in rcx. ---
@@ -230,7 +237,7 @@ uolt_main:
 
 .finish:
     mov     rax, r14
-    add     rsp, 2*BUFSZ + 96
+    add     rsp, 2*BUFSZ + 192
     pop     r15
     pop     r14
     pop     r13
@@ -320,42 +327,22 @@ last_lines:
     call    last_lines_pipe
     jmp     .ll_done
 
-// last_lines_pipe(fd in rdi, N in rsi): non-seekable last-N via a sliding window
-// that retains only the final BUFSZ bytes (buffer capacity is 2*BUFSZ).
+// last_lines_pipe(fd in rdi, N in rsi): non-seekable last-N. Slurp the whole
+// stream into a growable mmap region, then scan it backwards for the Nth-from-
+// last newline. Bounded only by memory (no truncation); the region is freed.
 last_lines_pipe:
     push    rbx
-    mov     rbx, rdi            // fd
-    mov     r10, rsi            // N
-    test    r10, r10
+    push    r12
+    mov     r12, rsi            // N (save before slurp)
+    test    r12, r12
     jz      .lp_fin             // -n 0: print nothing
-    xor     r8, r8              // len (bytes currently held)
-.lp_read:
-    mov     rdi, rbx
-    lea     rsi, [r15 + r8]
-    mov     rdx, BUFSZ
-    call    uolt_read
-    test    rax, rax
-    jz      .lp_eof
-    js      .lp_err
-    add     r8, rax             // len += got
-    cmp     r8, BUFSZ
-    jbe     .lp_read
-    mov     rcx, r8             // drop = len - BUFSZ oldest bytes
-    sub     rcx, BUFSZ
-    lea     rsi, [r15 + rcx]    // src = base + drop
-    mov     rdi, r15            // dst = base
-    mov     r8, BUFSZ           // new len
-    mov     rcx, BUFSZ          // move BUFSZ retained bytes down
-    rep     movsb
-    jmp     .lp_read
-.lp_err:
-    mov     r14, 1
-    jmp     .lp_fin
-.lp_eof:
+    call    slurp               // rdi = fd -> rax = base, rdx = len
+    mov     rbx, rax            // base
+    mov     r8, rdx             // len
     test    r8, r8
-    jz      .lp_fin
+    jz      .lp_free
     mov     r9, r8              // e = len; ignore one trailing newline
-    cmp     byte ptr [r15 + r8 - 1], 0x0a
+    cmp     byte ptr [rbx + r8 - 1], 0x0a
     jne     1f
     dec     r9
 1:
@@ -365,22 +352,29 @@ last_lines_pipe:
     test    rdx, rdx
     jz      .lp_whole
     dec     rdx
-    cmp     byte ptr [r15 + rdx], 0x0a
+    cmp     byte ptr [rbx + rdx], 0x0a
     jne     .lp_scan
     inc     rcx
-    cmp     rcx, r10
+    cmp     rcx, r12
     jne     .lp_scan
     inc     rdx                 // start = i + 1
     jmp     .lp_emit
 .lp_whole:
     xor     rdx, rdx            // start = 0
 .lp_emit:
-    lea     rsi, [r15 + rdx]
+    lea     rsi, [rbx + rdx]
     mov     rax, r8
     sub     rax, rdx
     mov     rdx, rax            // length = len - start
     call    emit
+.lp_free:
+    mov     rsi, [rbp + LOC_SCAP]
+    test    rsi, rsi
+    jz      .lp_fin
+    mov     rdi, rbx
+    call    uolt_munmap
 .lp_fin:
+    pop     r12
     pop     rbx
     ret
 
@@ -419,44 +413,102 @@ last_bytes:
     call    last_bytes_pipe
     jmp     .lb_done
 
-// last_bytes_pipe(fd in rdi, N in rsi): non-seekable last-N-bytes via a sliding
-// window keeping the last min(N, BUFSZ) bytes, then emitting them all.
+// last_bytes_pipe(fd in rdi, N in rsi): non-seekable last-N-bytes. Slurp the
+// whole stream into a growable mmap region, then emit its final N bytes.
 last_bytes_pipe:
     push    rbx
-    mov     rbx, rdi
-    mov     r10, rsi                    // keep = min(N, BUFSZ)
-    mov     rax, BUFSZ
-    cmp     r10, rax
-    jbe     1f
-    mov     r10, rax
+    push    r12
+    mov     r12, rsi                    // N
+    call    slurp                       // rax = base, rdx = len
+    mov     rbx, rax
+    mov     r8, rdx                     // len
+    test    r8, r8
+    jz      .lbp_free
+    mov     rax, r8                     // start = max(0, len - N)
+    sub     rax, r12
+    jns     1f
+    xor     rax, rax
 1:
-    xor     r8, r8                      // len
-.lbp_read:
+    lea     rsi, [rbx + rax]
+    mov     rdx, r8
+    sub     rdx, rax
+    call    emit
+.lbp_free:
+    mov     rsi, [rbp + LOC_SCAP]
+    test    rsi, rsi
+    jz      .lbp_fin
     mov     rdi, rbx
-    lea     rsi, [r15 + r8]
-    mov     rdx, BUFSZ
+    call    uolt_munmap
+.lbp_fin:
+    pop     r12
+    pop     rbx
+    ret
+
+// slurp(fd in rdi) -> rax = base, rdx = len. Reads the whole descriptor into a
+// growable mmap region (double, copy, munmap old). The capacity is left in
+// LOC_SCAP (0 on failure) for the caller to munmap. Sets r14 = 1 on error.
+slurp:
+    push    rbx
+    push    r12
+    push    r13
+    mov     rbx, rdi                    // fd
+    mov     rdi, SLURP_START
+    call    uolt_mmap_anon
+    test    rax, rax
+    js      .sl_err
+    mov     r12, rax                    // base
+    mov     qword ptr [rbp + LOC_SCAP], SLURP_START
+    xor     r13, r13                    // len
+.sl_read:
+    mov     rax, [rbp + LOC_SCAP]
+    cmp     r13, rax
+    jb      .sl_space
+    mov     rax, [rbp + LOC_SCAP]       // grow: newcap = cap * 2
+    add     rax, rax
+    mov     [rbp + LOC_SNC], rax
+    mov     rdi, rax
+    call    uolt_mmap_anon
+    test    rax, rax
+    js      .sl_err2
+    mov     [rbp + LOC_SNB], rax
+    mov     rdi, rax
+    mov     rsi, r12
+    mov     rcx, r13
+    rep     movsb
+    mov     rdi, r12
+    mov     rsi, [rbp + LOC_SCAP]
+    call    uolt_munmap
+    mov     r12, [rbp + LOC_SNB]
+    mov     rax, [rbp + LOC_SNC]
+    mov     [rbp + LOC_SCAP], rax
+.sl_space:
+    mov     rdx, [rbp + LOC_SCAP]
+    sub     rdx, r13
+    mov     rdi, rbx
+    lea     rsi, [r12 + r13]
     call    uolt_read
     test    rax, rax
-    jz      .lbp_eof
-    js      .lbp_fin
-    add     r8, rax
-    cmp     r8, r10
-    jbe     .lbp_read
-    mov     rcx, r8
-    sub     rcx, r10                    // drop oldest
-    lea     rsi, [r15 + rcx]
-    mov     rdi, r15
-    mov     r8, r10
-    mov     rcx, r10
-    rep     movsb
-    jmp     .lbp_read
-.lbp_eof:
-    test    r8, r8
-    jz      .lbp_fin
-    mov     rsi, r15
-    mov     rdx, r8
-    call    emit
-.lbp_fin:
+    jle     .sl_done                    // EOF or error
+    add     r13, rax
+    jmp     .sl_read
+.sl_done:
+    mov     rax, r12
+    mov     rdx, r13
+    pop     r13
+    pop     r12
+    pop     rbx
+    ret
+.sl_err2:
+    mov     rdi, r12                    // free the partial region
+    mov     rsi, [rbp + LOC_SCAP]
+    call    uolt_munmap
+.sl_err:
+    mov     r14, 1
+    xor     rax, rax
+    xor     rdx, rdx
+    mov     qword ptr [rbp + LOC_SCAP], 0
+    pop     r13
+    pop     r12
     pop     rbx
     ret
 

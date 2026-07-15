@@ -59,8 +59,10 @@ EXTRA_head := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
               libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
               $(SYSDIR)/open.S $(SYSDIR)/close.S
 EXTRA_tail := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
-              libuolt/close.S libuolt/lseek.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
-              $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/lseek.S
+              libuolt/close.S libuolt/lseek.S libuolt/mmap.S libuolt/munmap.S \
+              $(SYSDIR)/write.S $(SYSDIR)/read.S \
+              $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/lseek.S \
+              $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
 EXTRA_wc   := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
               libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
               $(SYSDIR)/open.S $(SYSDIR)/close.S
@@ -106,7 +108,7 @@ EXTRA_grep     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S
 EXTRA_find     := libuolt/strlen.S libuolt/write.S libuolt/opendir.S libuolt/close.S libuolt/getdents.S $(SYSDIR)/write.S $(SYSDIR)/opendir.S $(SYSDIR)/close.S $(SYSDIR)/getdents.S
 EXTRA_sort     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S libuolt/mmap.S libuolt/munmap.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
 EXTRA_tee      := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/close.S libuolt/opendst.S libuolt/openapp.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/close.S $(SYSDIR)/opendst.S $(SYSDIR)/openapp.S
-EXTRA_uniq     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
+EXTRA_uniq     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S libuolt/mmap.S libuolt/munmap.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
 EXTRA_cut      := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
 EXTRA_tr       := libuolt/strlen.S libuolt/write.S libuolt/read.S $(SYSDIR)/write.S $(SYSDIR)/read.S
 EXTRA_comm     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S

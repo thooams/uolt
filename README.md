@@ -7,7 +7,7 @@
 
 <p align="center">
   The <b>entire suite</b> is <b>44 KB</b> on Linux — smaller than a single stock
-  <code>grep</code> binary (187 KB), and <b>~50× smaller</b> than the equivalent
+  <code>grep</code> binary (187 KB), and <b>~49× smaller</b> than the equivalent
   stock tools combined, while staying byte-for-byte compatible.
 </p>
 
@@ -49,8 +49,8 @@ stays: `seq` (and its `-s`/`-w`), `grep -w`, and `find -maxdepth`. Nothing furth
 
 <table>
 <tr><th>Platform</th><th>UOLT suite (34 tools)</th><th>Stock tools combined</th><th>Smaller by</th></tr>
-<tr><td>Linux (static ELF)</td><td><b>44 KB</b></td><td>2.13 MB</td><td><b>~50×</b></td></tr>
-<tr><td>macOS (Mach-O)</td><td>301 KB</td><td>3.73 MB</td><td>~13×</td></tr>
+<tr><td>Linux (static ELF)</td><td><b>44 KB</b></td><td>2.13 MB</td><td><b>~49×</b></td></tr>
+<tr><td>macOS (Mach-O)</td><td>315 KB</td><td>3.73 MB</td><td>~12×</td></tr>
 </table>
 
 Average Linux tool: **~1.3 KB**. The smallest (`true`) is **384 bytes**, of which the
@@ -99,7 +99,7 @@ flag reference are in the collapsible sections below.
 |------|--------------|-----:|-------:|:-------:|
 | `cat`  | concatenate files / stdin (`-u`)                    |  824 B | 39.4 KB | **48×** |
 | `head` | first N lines / bytes (`-n`, `-c`)                  | 1472 B | 43.5 KB | **30×** |
-| `tail` | last N lines / bytes (`-n`, `-n +N`, `-c`)          | 2312 B | 64.0 KB | **28×** |
+| `tail` | last N lines / bytes (`-n`, `-n +N`, `-c`, unbounded pipe) | 2488 B | 64.0 KB | **26×** |
 | `wc`   | count lines / words / bytes / chars (`-l`/`-w`/`-c`/`-m`) | 1408 B | 55.8 KB | **40×** |
 | `tee`  | copy stdin to stdout and files (`-a`)               |  960 B | 39.4 KB | **41×** |
 
@@ -109,7 +109,7 @@ flag reference are in the collapsible sections below.
 |------|--------------|-----:|-------:|:-------:|
 | `grep` | fixed-string search (`-i -v -n -c -w -x`, like `grep -F`) | 1912 B | 186.8 KB | **98×** |
 | `sort` | sort lines (`-r -n -u -f -b`, unbounded input)            | 2232 B | 105.3 KB | **47×** |
-| `uniq` | collapse adjacent dups (`-c -d -u -i -f -s`)              | 1608 B |  39.4 KB | **25×** |
+| `uniq` | collapse adjacent dups (`-c -d -u -i -f -s`, any line length) | 1952 B |  39.4 KB | **20×** |
 | `cut`  | select characters / fields (`-c -f -d -s`)               | 1856 B |  39.4 KB | **21×** |
 | `tr`   | translate / delete / squeeze / complement bytes (`-d -s -c`) | 1560 B |  47.6 KB | **31×** |
 | `comm` | compare two sorted files (`-1 -2 -3`)                    | 1496 B |  39.4 KB | **26×** |
@@ -144,14 +144,14 @@ reported for transparency and measured against the Linux target, not held to it.
 | `pwd`   | 5504 B | 101.3 KB | `ln`    | 6192 B | 102.2 KB |
 | `cat`   | 6048 B | 119.0 KB | `rm`    | 8208 B | 119.2 KB |
 | `head`  | 6416 B | 102.0 KB | `mv`    | 5432 B | 119.4 KB |
-| `tail`  | 7272 B | 119.3 KB | `cp`    | 6320 B | 153.4 KB |
+| `tail`  | 18088 B | 119.3 KB | `cp`    | 6320 B | 153.4 KB |
 | `wc`    | 6496 B | 102.2 KB | `chmod` | 5544 B | 120.7 KB |
 | `yes`   | 5464 B | 100.9 KB | `ls`    | 7256 B | 154.6 KB |
 | `basename` | 5416 B | 101.6 KB | `seq` | 5952 B | 134.8 KB |
 | `dirname`  | 5408 B | 101.2 KB | `grep`| 7648 B | 153.8 KB |
 | `sleep` | 5704 B | 101.2 KB | `find` | 8928 B | 171.3 KB |
-| `tee`   | 9408 B | 101.2 KB | `sort` | 8888 B | 206.0 KB |
-| `uniq`  | 9144 B | 102.2 KB | `env`  | 8592 B | 102.4 KB |
+| `tee`   | 9408 B | 101.2 KB | `sort` | 16760 B | 206.0 KB |
+| `uniq`  | 16472 B | 102.2 KB | `env`  | 8592 B | 102.4 KB |
 | `cut`   | 9840 B | 102.5 KB | `tr`   | 7640 B | 135.3 KB |
 | `comm`  | 9136 B | 101.7 KB |        |        |         |
 
@@ -177,14 +177,14 @@ reported for transparency and measured against the Linux target, not held to it.
 
 - **`cat`** — concatenate operands (or stdin, also for `-`) verbatim in 64 KB blocks. `-u` is accepted and ignored (output is already unbuffered).
 - **`head`** — print the first N lines (default 10; `-n` sets N, `-c` counts bytes), with `==> name <==` headers for more than one file.
-- **`tail`** — print the last N lines (default 10; `-n` sets N, `-n +N` starts at line N, `-c` counts bytes). Seeks backwards on regular files so cost tracks the output, not the file size; retains the last 64 KB on a pipe.
+- **`tail`** — print the last N lines (default 10; `-n` sets N, `-n +N` starts at line N, `-c` counts bytes). Seeks backwards on regular files so cost tracks the output, not the file size; on a pipe it slurps the stream into a growable mmap region (memory-bound, no truncation).
 - **`wc`** — count lines / words / bytes / characters (`-l`/`-w`/`-c`/`-m`; default lines/words/bytes), always in the order lines/words/chars/bytes, with a `total` line for multiple files. In the C locale `-m` equals `-c`.
 - **`tee`** — copy stdin to stdout and to each file. `-a` appends.
 
 **Text processing**
 
 - **`grep`** — print input lines containing a fixed-string pattern (like `grep -F`, no regex yet). `-i` case-insensitive, `-v` invert, `-n` line numbers, `-c` count, `-w` word match, `-x` whole line.
-- **`sort`** — sort lines in C-locale byte order (input held in a 1 MB buffer). `-r` reverse, `-n` numeric, `-u` unique, `-f` fold case, `-b` ignore leading blanks.
+- **`sort`** — sort lines in C-locale byte order (input held in growable mmap regions, stable merge sort, buffered output; memory-bound, no truncation). `-r` reverse, `-n` numeric, `-u` unique, `-f` fold case, `-b` ignore leading blanks.
 - **`uniq`** — collapse adjacent duplicate lines. `-c` count, `-d` duplicated only, `-u` unique only, `-i` case-insensitive, `-f N` skip fields, `-s N` skip chars.
 - **`cut`** — select character positions (`-c`) or delimiter fields (`-f`/`-d`) with ranges. `-s` drops lines with no delimiter.
 - **`tr`** — translate, delete (`-d`), or squeeze repeats (`-s`) bytes; `-c` complements set1 so the operation applies to every byte not listed. Sets support `a-z` ranges.

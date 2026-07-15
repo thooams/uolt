@@ -1,13 +1,13 @@
 # UOLT — Ultra Optimised Lightweight Toolset
 
 <p align="center">
-  <b>31 Unix command-line tools, hand-written in x86_64 assembly.</b><br>
+  <b>32 Unix command-line tools, hand-written in x86_64 assembly.</b><br>
   No libc · no heap · direct syscalls · fully static on Linux.
 </p>
 
 <p align="center">
-  The <b>entire suite</b> is <b>37 KB</b> on Linux — smaller than a single stock
-  <code>grep</code> binary (187 KB), and <b>~57× smaller</b> than the equivalent
+  The <b>entire suite</b> is <b>38.5 KB</b> on Linux — smaller than a single stock
+  <code>grep</code> binary (187 KB), and <b>~54× smaller</b> than the equivalent
   stock tools combined, while staying byte-for-byte compatible.
 </p>
 
@@ -48,12 +48,12 @@ stays: `seq` (and its `-s`/`-w`), `grep -w`, and `find -maxdepth`. Nothing furth
 ## The whole suite at a glance
 
 <table>
-<tr><th>Platform</th><th>UOLT suite (31 tools)</th><th>Stock tools combined</th><th>Smaller by</th></tr>
-<tr><td>Linux (static ELF)</td><td><b>36.7 KB</b></td><td>2.08 MB</td><td><b>~57×</b></td></tr>
-<tr><td>macOS (Mach-O)</td><td>208 KB</td><td>3.60 MB</td><td>~17×</td></tr>
+<tr><th>Platform</th><th>UOLT suite (32 tools)</th><th>Stock tools combined</th><th>Smaller by</th></tr>
+<tr><td>Linux (static ELF)</td><td><b>38.5 KB</b></td><td>2.09 MB</td><td><b>~54×</b></td></tr>
+<tr><td>macOS (Mach-O)</td><td>266 KB</td><td>3.62 MB</td><td>~14×</td></tr>
 </table>
 
-Average Linux tool: **~1.1 KB**. The smallest (`true`) is **384 bytes**, of which the
+Average Linux tool: **~1.2 KB**. The smallest (`true`) is **384 bytes**, of which the
 actual machine code is 21 bytes.
 
 ## Build
@@ -89,6 +89,7 @@ flag reference are in the collapsible sections below.
 | `sleep`    | suspend (`s`/`m`/`h`/`d` suffixes)       |  960 B | 35.3 KB | **37×** |
 | `basename` | final path component (+ suffix strip)    |  728 B | 35.3 KB | **49×** |
 | `dirname`  | directory part of a path                 |  688 B | 35.2 KB | **51×** |
+| `printf`   | format & print (`%d %i %u %o %x %X %c %s %b`, escapes) | 2720 B | 54.4 KB | **20×** |
 
 ### File contents
 

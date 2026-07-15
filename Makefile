@@ -115,11 +115,12 @@ EXTRA_test     := libuolt/strlen.S libuolt/write.S libuolt/statmode.S libuolt/ls
                   libuolt/statsize.S libuolt/access.S \
                   $(SYSDIR)/write.S $(SYSDIR)/statmode.S $(SYSDIR)/lstatmode.S \
                   $(SYSDIR)/statsize.S $(SYSDIR)/access.S
+EXTRA_expr     := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
 # EXTRA_<name> line above.
-TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls seq grep find sort tee uniq env cut tr comm printf test
+TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls seq grep find sort tee uniq env cut tr comm printf test expr
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean install uninstall
@@ -199,6 +200,8 @@ test: all
 	@sh tests/differential/printf.sh
 	@sh tests/unit/test.sh
 	@sh tests/differential/test.sh
+	@sh tests/unit/expr.sh
+	@sh tests/differential/expr.sh
 	@sh tests/unit/sleep.sh
 	@sh tests/posix/sleep.sh
 	@sh tests/trace/sleep.sh

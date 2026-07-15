@@ -1,13 +1,13 @@
 # UOLT — Ultra Optimised Lightweight Toolset
 
 <p align="center">
-  <b>33 Unix command-line tools, hand-written in x86_64 assembly.</b><br>
+  <b>34 Unix command-line tools, hand-written in x86_64 assembly.</b><br>
   No libc · no heap · direct syscalls · fully static on Linux.
 </p>
 
 <p align="center">
-  The <b>entire suite</b> is <b>41 KB</b> on Linux — smaller than a single stock
-  <code>grep</code> binary (187 KB), and <b>~52× smaller</b> than the equivalent
+  The <b>entire suite</b> is <b>43 KB</b> on Linux — smaller than a single stock
+  <code>grep</code> binary (187 KB), and <b>~51× smaller</b> than the equivalent
   stock tools combined, while staying byte-for-byte compatible.
 </p>
 
@@ -48,12 +48,12 @@ stays: `seq` (and its `-s`/`-w`), `grep -w`, and `find -maxdepth`. Nothing furth
 ## The whole suite at a glance
 
 <table>
-<tr><th>Platform</th><th>UOLT suite (33 tools)</th><th>Stock tools combined</th><th>Smaller by</th></tr>
-<tr><td>Linux (static ELF)</td><td><b>41 KB</b></td><td>2.09 MB</td><td><b>~52×</b></td></tr>
-<tr><td>macOS (Mach-O)</td><td>283 KB</td><td>3.63 MB</td><td>~13×</td></tr>
+<tr><th>Platform</th><th>UOLT suite (34 tools)</th><th>Stock tools combined</th><th>Smaller by</th></tr>
+<tr><td>Linux (static ELF)</td><td><b>43 KB</b></td><td>2.13 MB</td><td><b>~51×</b></td></tr>
+<tr><td>macOS (Mach-O)</td><td>293 KB</td><td>3.73 MB</td><td>~13×</td></tr>
 </table>
 
-Average Linux tool: **~1.2 KB**. The smallest (`true`) is **384 bytes**, of which the
+Average Linux tool: **~1.3 KB**. The smallest (`true`) is **384 bytes**, of which the
 actual machine code is 21 bytes.
 
 ## Build
@@ -91,6 +91,7 @@ flag reference are in the collapsible sections below.
 | `dirname`  | directory part of a path                 |  688 B | 35.2 KB | **51×** |
 | `printf`   | format & print (`%d %i %u %o %x %X %c %s %b`, escapes) | 2720 B | 54.4 KB | **20×** |
 | `test` / `[` | evaluate a conditional (string / integer / file, `! -a -o ( )`) | 2592 B | 46.4 KB | **18×** |
+| `expr`     | evaluate an expression (`+ - * / %`, `< = >`, `\| &`, `( )`) | 2104 B | 42.4 KB | **21×** |
 
 ### File contents
 

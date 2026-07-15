@@ -111,11 +111,15 @@ EXTRA_cut      := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S
 EXTRA_tr       := libuolt/strlen.S libuolt/write.S libuolt/read.S $(SYSDIR)/write.S $(SYSDIR)/read.S
 EXTRA_comm     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
 EXTRA_printf   := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
+EXTRA_test     := libuolt/strlen.S libuolt/write.S libuolt/statmode.S libuolt/lstatmode.S \
+                  libuolt/statsize.S libuolt/access.S \
+                  $(SYSDIR)/write.S $(SYSDIR)/statmode.S $(SYSDIR)/lstatmode.S \
+                  $(SYSDIR)/statsize.S $(SYSDIR)/access.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
 # EXTRA_<name> line above.
-TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls seq grep find sort tee uniq env cut tr comm printf
+TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls seq grep find sort tee uniq env cut tr comm printf test
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 .PHONY: all test bench clean install uninstall
@@ -193,6 +197,8 @@ test: all
 	@sh tests/differential/comm.sh
 	@sh tests/unit/printf.sh
 	@sh tests/differential/printf.sh
+	@sh tests/unit/test.sh
+	@sh tests/differential/test.sh
 	@sh tests/unit/sleep.sh
 	@sh tests/posix/sleep.sh
 	@sh tests/trace/sleep.sh
@@ -245,14 +251,17 @@ install: all
 	  ln -sf $(abspath $(BUILD))/uolt-$$t $(PREFIX)/bin/$$t; \
 	  echo "  $(PREFIX)/bin/$$t -> uolt-$$t"; \
 	done
-	@echo "Installed $(words $(TOOLNAMES)) tools. Add to PATH: export PATH=\"$(PREFIX)/bin:$$PATH\""
+	@ln -sf $(abspath $(BUILD))/uolt-test $(PREFIX)/bin/[
+	@echo "  $(PREFIX)/bin/[ -> uolt-test"
+	@echo "Installed $(words $(TOOLNAMES)) tools (+ the [ alias of test). Add to PATH: export PATH=\"$(PREFIX)/bin:$$PATH\""
 
 # Remove only the symlinks we own, and only if they still point at our binaries -
 # never delete a real file a user may have placed there.
 uninstall:
-	@for t in $(TOOLNAMES); do \
+	@for t in $(TOOLNAMES) '['; do \
 	  l=$(PREFIX)/bin/$$t; \
-	  if [ -L "$$l" ] && [ "$$(readlink "$$l")" = "$(abspath $(BUILD))/uolt-$$t" ]; then \
+	  case "$$t" in '[') tgt=uolt-test;; *) tgt=uolt-$$t;; esac; \
+	  if [ -L "$$l" ] && [ "$$(readlink "$$l")" = "$(abspath $(BUILD))/$$tgt" ]; then \
 	    rm -f "$$l"; echo "  removed $$l"; \
 	  fi; \
 	done

@@ -30,3 +30,23 @@
 .set DT_DIR,     4
 .set DT_REG,     8
 .set DT_LNK,     10
+
+// File-mode bits from st_mode (POSIX; identical on Linux and macOS), used by the
+// stat-based file tests in `test`. S_IF* are the type field (mask S_IFMT); the
+// S_IS* are the set-user-ID / set-group-ID / sticky permission bits.
+.set S_IFMT,   0xF000
+.set S_IFREG,  0x8000
+.set S_IFDIR,  0x4000
+.set S_IFLNK,  0xA000
+.set S_IFIFO,  0x1000
+.set S_IFSOCK, 0xC000
+.set S_IFBLK,  0x6000
+.set S_IFCHR,  0x2000
+.set S_ISUID,  0x0800
+.set S_ISGID,  0x0400
+.set S_ISVTX,  0x0200
+
+// access(2) permission-check bits.
+.set R_OK, 4
+.set W_OK, 2
+.set X_OK, 1

@@ -6,8 +6,8 @@
 </p>
 
 <p align="center">
-  The <b>entire suite</b> is <b>43 KB</b> on Linux — smaller than a single stock
-  <code>grep</code> binary (187 KB), and <b>~51× smaller</b> than the equivalent
+  The <b>entire suite</b> is <b>44 KB</b> on Linux — smaller than a single stock
+  <code>grep</code> binary (187 KB), and <b>~50× smaller</b> than the equivalent
   stock tools combined, while staying byte-for-byte compatible.
 </p>
 
@@ -49,8 +49,8 @@ stays: `seq` (and its `-s`/`-w`), `grep -w`, and `find -maxdepth`. Nothing furth
 
 <table>
 <tr><th>Platform</th><th>UOLT suite (34 tools)</th><th>Stock tools combined</th><th>Smaller by</th></tr>
-<tr><td>Linux (static ELF)</td><td><b>43 KB</b></td><td>2.13 MB</td><td><b>~51×</b></td></tr>
-<tr><td>macOS (Mach-O)</td><td>293 KB</td><td>3.73 MB</td><td>~13×</td></tr>
+<tr><td>Linux (static ELF)</td><td><b>44 KB</b></td><td>2.13 MB</td><td><b>~50×</b></td></tr>
+<tr><td>macOS (Mach-O)</td><td>301 KB</td><td>3.73 MB</td><td>~13×</td></tr>
 </table>
 
 Average Linux tool: **~1.3 KB**. The smallest (`true`) is **384 bytes**, of which the
@@ -108,7 +108,7 @@ flag reference are in the collapsible sections below.
 | Tool | What it does | uolt | system | smaller |
 |------|--------------|-----:|-------:|:-------:|
 | `grep` | fixed-string search (`-i -v -n -c -w -x`, like `grep -F`) | 1912 B | 186.8 KB | **98×** |
-| `sort` | sort lines (`-r -n -u -f -b`)                             | 1384 B | 105.3 KB | **76×** |
+| `sort` | sort lines (`-r -n -u -f -b`, unbounded input)            | 2232 B | 105.3 KB | **47×** |
 | `uniq` | collapse adjacent dups (`-c -d -u -i -f -s`)              | 1608 B |  39.4 KB | **25×** |
 | `cut`  | select characters / fields (`-c -f -d -s`)               | 1856 B |  39.4 KB | **21×** |
 | `tr`   | translate / delete / squeeze / complement bytes (`-d -s -c`) | 1560 B |  47.6 KB | **31×** |

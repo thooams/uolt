@@ -1,6 +1,13 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.5.0 → 1.5.1
+Bump rationale: PATCH. Clarifies Principle IV: a whole-input tool (e.g. `sort`) MAY use an
+  explicit, failure-checked mmap region - including a growable one (map larger, copy, munmap) -
+  instead of a fixed buffer that would silently truncate, since that is a tool-owned reservation
+  with a reported out-of-memory path, not a hidden heap. No rule is redefined or removed; this
+  makes an already-permitted use explicit.
+
 Version change: 1.4.0 → 1.5.0
 Bump rationale: MINOR. Hardens Principle VIII with an explicit scope line: an option MAY be
   implemented iff POSIX specifies it for that tool; no GNU-only options; exactly one
@@ -101,9 +108,15 @@ loader stub the OS imposes.
 ### IV. No Heap, No Hidden Allocation
 The heap is forbidden. No `malloc`, no runtime that allocates on the tool's behalf, no hidden
 heap. Memory MUST come from the stack, registers, or static buffers. `mmap` MAY be used only
-when genuinely necessary and MUST be justified in the change.
+when genuinely necessary and MUST be justified in the change. Specifically, a tool that must hold
+an unbounded amount of input at once (e.g. `sort`) MAY use an explicit, failure-checked `mmap`
+region - including a growable one (map larger, copy, `munmap` the old) - in preference to a fixed
+buffer that would silently truncate. This is an explicit, tool-owned reservation with a reported
+out-of-memory path, not a hidden heap: the intent (no libc/runtime allocation, no silent failure)
+is preserved.
 **Rationale**: Heap allocation adds size, unpredictability, and failure modes UOLT refuses to
-carry.
+carry; an explicit mmap that reports failure keeps those properties while letting the few
+whole-input tools stay correct at scale.
 
 ### V. Thin Syscall Abstraction + Internal API
 A tool MUST NOT contain a raw syscall number. Platform differences live behind a thin
@@ -292,4 +305,4 @@ writing and either approved or corrected before merge.
 Compliance is reviewed on every change through the quality gates above. Complexity that
 violates a principle MUST be justified or removed.
 
-**Version**: 1.5.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-14
+**Version**: 1.5.1 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-15

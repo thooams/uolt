@@ -47,6 +47,14 @@ done
 # underspecified and diverges between BSD (input-first) and GNU (last-resort
 # disabled), so uolt's deterministic choice is exercised in the unit test only.
 
+# Large input: well past the old fixed 1 MB buffer, exercising the growable mmap
+# regions. This is the regression guard against silent truncation.
+awk 'BEGIN { srand(20260715); for (i = 0; i < 200000; i++) print int(rand()*1000000000) }' >"$tmp/big"
+"$BIN" "$tmp/big" >"$tmp/u"; LC_ALL=C "$REF" "$tmp/big" >"$tmp/r"
+cmp -s "$tmp/u" "$tmp/r" || { echo "FAIL diff: large input (truncation?)"; fail=1; }
+"$BIN" -n "$tmp/big" >"$tmp/u"; LC_ALL=C "$REF" -n "$tmp/big" >"$tmp/r"
+cmp -s "$tmp/u" "$tmp/r" || { echo "FAIL diff: large input -n"; fail=1; }
+
 # Fuzz: random line sets.
 i=0
 while [ "$i" -lt 60 ]; do

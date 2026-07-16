@@ -88,9 +88,38 @@ yay -S uolt
 git clone https://github.com/thooams/uolt && cd uolt && make
 ```
 
-To use the tools as a reversible POSIX shadow on your `PATH`, `make install` symlinks the
-bare names into `$(PREFIX)/bin` (default `~/.local`); `make uninstall` removes them. See
-[`packaging/`](packaging/) for the tap/AUR/flake details.
+See [`packaging/`](packaging/) for the tap/AUR/flake details.
+
+### Using them under the real names (`ls`, `cat`, …)
+
+Nobody wants to type `uolt-ls`. The prefix only exists so a package never *silently*
+replaces your coreutils; opting in to the bare names is one command:
+
+```sh
+make install                       # symlink cat, ls, sort, … into ~/.local/bin
+export PATH="$HOME/.local/bin:$PATH"   # put them first, for this shell
+make uninstall                     # remove the symlinks (fully reversible)
+```
+
+Prefer symlinks over shell `alias`es: aliases only apply to your interactive prompt, so
+scripts, `xargs`, `find -exec`, and `sudo` would still hit the system tools. A `PATH`
+symlink is seen everywhere.
+
+> **Read this before shadowing everything.** UOLT is a **POSIX subset** — it deliberately
+> omits GNU/BSD extensions. Under the real names you lose things you may rely on: `ls` has
+> no `-l`, `--color`, or sorting; `grep` no `-r`/regex; `sort` no `-k`; `cp`/`rm` fewer
+> safety flags. Shadowing the file-mutating tools (`rm cp mv chmod ln`) system-wide is a
+> genuine footgun. Do it per-shell (as above), not globally, and consider shadowing only a
+> safe subset that rarely needs extensions:
+
+```sh
+mkdir -p ~/.local/uolt-bin
+for t in true false echo cat wc head tail sort uniq comm cut tr \
+         basename dirname printf test expr seq yes tee sleep; do
+    ln -sf "$PWD/build/uolt-$t" ~/.local/uolt-bin/"$t"
+done
+export PATH="$HOME/.local/uolt-bin:$PATH"   # POSIX subset up front, system tools intact
+```
 
 ## Build
 

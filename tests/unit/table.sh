@@ -17,6 +17,16 @@ check() {
     fi
 }
 
+checkH() {
+    label=$1; input=$2; expected=$3
+    got=$(printf '%s' "$input" | "$BIN" -H)
+    if [ "$got" != "$expected" ]; then
+        echo "FAIL unit: $label"
+        printf 'expected:\n%s\ngot:\n%s\n' "$expected" "$got"
+        fail=1
+    fi
+}
+
 # Basic grid: three columns, widths driven by the widest cell in each.
 check "basic" 'name size date
 foo 1024 jul16
@@ -73,6 +83,28 @@ c d' '┌───┬───┐
 │ a │ b │
 │ c │ d │
 └───┴───┘'
+
+# -H: the first rendered row is a header, separated by a ├───┼───┤ rule.
+checkH "header" 'name size
+foo 1024
+bar 42
+' '┌──────┬──────┐
+│ name │ size │
+├──────┼──────┤
+│ foo  │ 1024 │
+│ bar  │ 42   │
+└──────┴──────┘'
+
+# -H with a leading blank line: the header is the first NON-blank row.
+checkH "header-skips-blank" '
+
+name size
+foo 1024
+' '┌──────┬──────┐
+│ name │ size │
+├──────┼──────┤
+│ foo  │ 1024 │
+└──────┴──────┘'
 
 # Empty input yields no output and exit 0.
 out=$(printf '' | "$BIN"); rc=$?

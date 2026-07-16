@@ -83,6 +83,18 @@ points so accented text stays aligned. Input is streamed into a growable `mmap` 
 input size renders without a fixed-buffer truncation. Limits (documented): wide/combining code
 points count as one column each, and a line may have at most 1024 fields.
 
+Pass `-H` to treat the first row as a header, separated from the body by a `├───┼───┤` rule:
+
+```console
+$ printf 'name size\nfoo 1024\nbar 42\n' | uolt-table -H
+┌──────┬──────┐
+│ name │ size │
+├──────┼──────┤
+│ foo  │ 1024 │
+│ bar  │ 42   │
+└──────┴──────┘
+```
+
 ## The whole suite at a glance
 
 <table>

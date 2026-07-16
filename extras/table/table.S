@@ -32,7 +32,9 @@
 //     documented limitation, not data loss.
 //
 // Called as uolt_main(argc in rdi, argv in rsi) by the per-OS entry shim.
-// Standard input only in v1 (no file operands); arguments are ignored.
+// Standard input only (no file operands). The single option is -H: treat the
+// first rendered row as a header and draw a separator rule (├───┼───┤) between
+// it and the rest of the rows.
 //
 // Stack locals (rbp-relative), all below -40 so they never overlap the five
 // callee-saved registers the prologue pushes into [rbp-8..-40]:
@@ -41,6 +43,8 @@
 //   [-88]=grow new-cap scratch  [-96]=grow new-base scratch
 //   [-104]=current line end ptr  [-112]=field cursor ptr
 //   [-120]=field start ptr  [-128]=field end ptr
+//   [-136]=-H header flag  [-144]=header separator already drawn
+//   [-152..-168]=hline's three glyph pointers (left/mid/right)
 
 #include "uolt.inc"
 
@@ -64,6 +68,11 @@
 .set LOC_P,     -112
 .set LOC_FS,    -120
 .set LOC_FE,    -128
+.set LOC_HEADER,  -136
+.set LOC_SEPDONE, -144
+.set LOC_GL,      -152
+.set LOC_GM,      -160
+.set LOC_GR,      -168
 
 .text
 .globl uolt_main
@@ -75,8 +84,30 @@ uolt_main:
     push    r13
     push    r14
     push    r15
-    sub     rsp, 160
+    sub     rsp, 176
     cld
+
+    // -H: draw a separator after the first row (treat it as a header). Parse
+    // argv now, before mmap clobbers rdi/rsi. rax/rcx/r8/r9 are scratch here.
+    mov     qword ptr [rbp + LOC_HEADER], 0
+    mov     rcx, rdi                    // argc
+    mov     r8, rsi                     // argv
+    mov     rax, 1
+.arg_l:
+    cmp     rax, rcx
+    jae     .arg_done
+    mov     r9, [r8 + rax*8]            // argv[i]
+    cmp     byte ptr [r9], '-'
+    jne     .arg_next
+    cmp     byte ptr [r9 + 1], 'H'
+    jne     .arg_next
+    cmp     byte ptr [r9 + 2], 0
+    jne     .arg_next
+    mov     qword ptr [rbp + LOC_HEADER], 1
+.arg_next:
+    inc     rax
+    jmp     .arg_l
+.arg_done:
 
     // Reserve the three mmap regions up front. Anonymous mmap is zero-filled, so
     // the column-width array starts cleared. rdi/rsi are clobbered by mmap, but
@@ -102,6 +133,7 @@ uolt_main:
 
     mov     qword ptr [rbp + LOC_NCOLS], 0
     mov     qword ptr [rbp + LOC_OLEN], 0
+    mov     qword ptr [rbp + LOC_SEPDONE], 0
 
     // ---- slurp all of stdin into the growable input region ----
     xor     r13, r13                    // fill count
@@ -183,33 +215,10 @@ uolt_main:
     je      .fin
 
     // ---- pass 2: draw the table ----
-    // top border: ┌ ─...─ (┬ between, ┐ at the end)
-    lea     rsi, [rip + G_TL]
-    call    ob_g3
-    xor     r13, r13                    // column index
-.tb_l:
-    mov     rax, [rbp + LOC_NCOLS]
-    cmp     r13, rax
-    jae     .tb_done
-    mov     rdi, [rbx + r13*8]
-    add     rdi, 2                       // one blank of padding on each side
-    call    ob_hrep
-    mov     rax, [rbp + LOC_NCOLS]
-    dec     rax
-    cmp     r13, rax
-    jae     1f
+    lea     rdi, [rip + G_TL]           // top border  ┌───┬───┐
     lea     rsi, [rip + G_TT]
-    call    ob_g3
-    jmp     2f
-1:
-    lea     rsi, [rip + G_TR]
-    call    ob_g3
-2:
-    inc     r13
-    jmp     .tb_l
-.tb_done:
-    mov     al, 0x0a
-    call    ob_putb
+    lea     rdx, [rip + G_TR]
+    call    hline
 
     // data rows
     mov     r12, r15                    // cur = start of input
@@ -295,6 +304,17 @@ uolt_main:
     call    ob_g3
     mov     al, 0x0a
     call    ob_putb
+    // -H: after the first rendered row, draw the header separator once
+    cmp     qword ptr [rbp + LOC_HEADER], 0
+    je      .cell_adv
+    cmp     qword ptr [rbp + LOC_SEPDONE], 0
+    jne     .cell_adv
+    mov     qword ptr [rbp + LOC_SEPDONE], 1
+    lea     rdi, [rip + G_LT]           // ├───┼───┤
+    lea     rsi, [rip + G_CR]
+    lea     rdx, [rip + G_RT]
+    call    hline
+.cell_adv:
     // advance to the next line
     mov     rax, [rbp + LOC_LEND]
     mov     rcx, [rbp + LOC_END]
@@ -305,39 +325,16 @@ uolt_main:
     mov     r12, rax
     jmp     .row_l
 .rows_done:
-    // bottom border: └ ─...─ (┴ between, ┘ at the end)
-    lea     rsi, [rip + G_BL]
-    call    ob_g3
-    xor     r13, r13
-.bb_l:
-    mov     rax, [rbp + LOC_NCOLS]
-    cmp     r13, rax
-    jae     .bb_done
-    mov     rdi, [rbx + r13*8]
-    add     rdi, 2
-    call    ob_hrep
-    mov     rax, [rbp + LOC_NCOLS]
-    dec     rax
-    cmp     r13, rax
-    jae     1f
+    lea     rdi, [rip + G_BL]           // bottom border  └───┴───┘
     lea     rsi, [rip + G_BT]
-    call    ob_g3
-    jmp     2f
-1:
-    lea     rsi, [rip + G_BR]
-    call    ob_g3
-2:
-    inc     r13
-    jmp     .bb_l
-.bb_done:
-    mov     al, 0x0a
-    call    ob_putb
+    lea     rdx, [rip + G_BR]
+    call    hline
 
 .fin:
     call    ob_flush
     xor     eax, eax
 .ret:
-    add     rsp, 160
+    add     rsp, 176
     pop     r15
     pop     r14
     pop     r13
@@ -552,6 +549,44 @@ ob_sp:
 1:
     ret
 
+// hline(rdi = left glyph, rsi = mid glyph, rdx = right glyph): emit one
+// horizontal rule spanning every column (left corner, per-column bars joined by
+// the mid glyph, right corner), then a newline. Used for the top/bottom borders
+// and the -H header separator. Preserves r12 (the line cursor) and rbx/r14/r15;
+// clobbers r13. The three glyph pointers are stashed in locals because the ob_*
+// calls clobber caller-saved registers.
+hline:
+    mov     [rbp + LOC_GL], rdi
+    mov     [rbp + LOC_GM], rsi
+    mov     [rbp + LOC_GR], rdx
+    mov     rsi, rdi
+    call    ob_g3                       // left corner
+    xor     r13, r13
+.hl_l:
+    mov     rax, [rbp + LOC_NCOLS]
+    cmp     r13, rax
+    jae     .hl_done
+    mov     rdi, [rbx + r13*8]
+    add     rdi, 2                       // a blank of padding on each side
+    call    ob_hrep
+    mov     rax, [rbp + LOC_NCOLS]
+    dec     rax
+    cmp     r13, rax
+    jae     .hl_last
+    mov     rsi, [rbp + LOC_GM]
+    call    ob_g3
+    jmp     .hl_next
+.hl_last:
+    mov     rsi, [rbp + LOC_GR]
+    call    ob_g3
+.hl_next:
+    inc     r13
+    jmp     .hl_l
+.hl_done:
+    mov     al, 0x0a
+    call    ob_putb
+    ret
+
 // err_puts(rdi = ASCIZ): write the string to stderr.
 err_puts:
     mov     r10, rdi
@@ -571,6 +606,9 @@ G_H:   .byte 0xE2, 0x94, 0x80          // ─  U+2500
 G_V:   .byte 0xE2, 0x94, 0x82          // │  U+2502
 G_TT:  .byte 0xE2, 0x94, 0xAC          // ┬  U+252C
 G_BT:  .byte 0xE2, 0x94, 0xB4          // ┴  U+2534
+G_LT:  .byte 0xE2, 0x94, 0x9C          // ├  U+251C
+G_CR:  .byte 0xE2, 0x94, 0xBC          // ┼  U+253C
+G_RT:  .byte 0xE2, 0x94, 0xA4          // ┤  U+2524
 
 err_many:  .asciz "uolt-table: too many columns\n"
 err_nomem: .asciz "uolt-table: out of memory\n"

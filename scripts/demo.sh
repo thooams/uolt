@@ -17,7 +17,7 @@ set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
-B=build
+B=${BUILD:-build}            # honours the per-OS build dir (build-linux in CI/demo)
 PAUSE=${PAUSE:-1.4}          # seconds between steps (set PAUSE=0 to go fast)
 
 run() {                      # show the command, pause, run it, pause
@@ -28,7 +28,6 @@ run() {                      # show the command, pause, run it, pause
 }
 say() { printf '\n# %s\n' "$*"; sleep "$PAUSE"; }
 
-clear
 say "UOLT - 34 Unix tools, hand-written in x86_64 assembly. No libc, no heap."
 
 say "Build the entire suite (one clang invocation per tool):"

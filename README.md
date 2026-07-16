@@ -11,6 +11,10 @@
   stock tools combined, while staying byte-for-byte compatible.
 </p>
 
+<p align="center">
+  <img src="docs/uolt-demo.gif" alt="UOLT demo: build the suite, compare its size to one grep, prove byte-for-byte output, sort a large file" width="720">
+</p>
+
 ---
 
 ## What is this?

@@ -125,8 +125,19 @@ EXTRA_expr     := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
 TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkdir rmdir touch ln rm mv cp chmod ls seq grep find sort tee uniq env cut tr comm printf test expr
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
+# --- UOLT extras: non-core, non-POSIX convenience tools (see constitution's
+# Extras section). They reuse the same sys/ + libuolt/ infrastructure but live
+# under extras/<name>/<name>.S and are kept out of the POSIX-only core so the
+# core stays a strict POSIX subset. Each still obeys every other principle.
+EXTRA_table    := libuolt/strlen.S libuolt/write.S libuolt/read.S \
+                  libuolt/mmap.S libuolt/munmap.S \
+                  $(SYSDIR)/write.S $(SYSDIR)/read.S \
+                  $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
+EXTRANAMES := table
+EXTRABINS  := $(addprefix $(BUILD)/uolt-,$(EXTRANAMES))
+
 .PHONY: all test bench clean install uninstall
-all: $(TOOLBINS)
+all: $(TOOLBINS) $(EXTRABINS)
 
 # One explicit rule per tool (robust across make versions). Each links its own
 # source + COMMON + its EXTRA sources in a single clang invocation.
@@ -135,6 +146,13 @@ $(BUILD)/uolt-$(1): src/$(1)/$(1).S $$(COMMON) $$(EXTRA_$(1)) | $$(BUILD)
 	$$(call LINK,src/$(1)/$(1).S $$(COMMON) $$(EXTRA_$(1)),$$@)
 endef
 $(foreach t,$(TOOLNAMES),$(eval $(call TOOL_RULE,$(t))))
+
+# Same recipe for extras, but their source lives under extras/<name>/.
+define EXTRA_RULE
+$(BUILD)/uolt-$(1): extras/$(1)/$(1).S $$(COMMON) $$(EXTRA_$(1)) | $$(BUILD)
+	$$(call LINK,extras/$(1)/$(1).S $$(COMMON) $$(EXTRA_$(1)),$$@)
+endef
+$(foreach t,$(EXTRANAMES),$(eval $(call EXTRA_RULE,$(t))))
 
 $(BUILD):
 	mkdir -p $(BUILD)
@@ -239,6 +257,9 @@ test: all
 	@sh tests/differential/tee.sh
 	@sh tests/unit/uniq.sh
 	@sh tests/differential/uniq.sh
+	@sh tests/unit/table.sh
+	@sh tests/fuzz/table.sh
+	@sh tests/trace/table.sh
 
 bench: all
 	@sh bench/run.sh

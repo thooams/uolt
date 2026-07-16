@@ -1,6 +1,18 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.5.1 → 1.6.0
+Bump rationale: MINOR. Adds a new section, "UOLT Extras (Non-Core Collection)", and a pointer
+  to it from Principle VIII. The core library stays a strict POSIX subset (Principle VIII is
+  unchanged for it); the amendment sanctions a clearly separated `extras/` collection of
+  non-core, non-POSIX convenience tools (first member: `uolt-table`). Extras are exempt ONLY
+  from Principle VIII (POSIX-only) and still obey every other principle (assembly-only, direct
+  syscalls, zero deps, no heap, thin syscall abstraction, size targets, readability,
+  documentation, tested + benchmarked). This is not a second build of a core tool and not a
+  runtime mode flag, so it does not reintroduce the dual-build cost Principle VIII forbids: each
+  extra is its own single binary reusing the shared `sys/` + `libuolt/` infrastructure. No
+  existing rule is redefined or removed.
+
 Version change: 1.5.0 → 1.5.1
 Bump rationale: PATCH. Clarifies Principle IV: a whole-input tool (e.g. `sort`) MAY use an
   explicit, failure-checked mmap region - including a growable one (map larger, copy, munmap) -
@@ -160,6 +172,10 @@ this line and MAY remain (they are already implemented and tested): `seq` and it
 (the whole tool is non-POSIX), `grep -w`, and `find -maxdepth`. This list is closed: no
 further non-POSIX options may be added under it.
 
+**Extras exception.** Non-core, non-POSIX convenience tools are permitted ONLY inside the
+separate `extras/` collection defined in "UOLT Extras (Non-Core Collection)" below. The core
+utilities named in this principle remain a strict POSIX subset with no such tools.
+
 **Rationale**: POSIX is a stable, achievable contract on which the two reference
 implementations agree; chasing GNU breadth, or splitting into POSIX/extended builds, would
 sink the size and simplicity goals and the byte-for-byte differential guarantee.
@@ -210,6 +226,34 @@ overhead we do not control.
 **Rationale**: Optimized, lightweight assembly has no guard rails; differential tests,
 fuzzing, partial-I/O coverage, and syscall traces are what make the tools provably solid
 rather than merely small and fast.
+
+## UOLT Extras (Non-Core Collection)
+
+The core toolset is POSIX-only (Principle VIII). Some genuinely useful tools are not POSIX at
+all (e.g. rendering piped output as a table). Rather than pollute the core or fork the project,
+these live in a clearly separated **extras** collection.
+
+- **Location & naming**: extra tools live under `extras/<name>/<name>.S` (the core lives under
+  `src/`), and still ship as `uolt-<name>` binaries (e.g. `uolt-table`). They reuse the exact
+  same shared infrastructure - `sys/<os>/`, `libuolt/`, `include/uolt.inc`, the entry shim, the
+  Linux link script, and the single Makefile - so there is no second copy of anything and no
+  drift.
+- **What is relaxed**: extras are exempt from Principle VIII (POSIX-only) and only that. They
+  MAY implement behavior POSIX does not specify (or does not have a tool for).
+- **What still holds**: every other principle applies unchanged - I (assembly only), II (direct
+  syscalls), III (zero dependencies), IV (no heap; explicit failure-checked mmap only), V (thin
+  syscall abstraction + shared internal API), VI (a declared, held size target), VII (measured
+  optimization), IX (readable & explicit), X (documentation + a README entry), and XI (unit,
+  fuzz, partial-I/O, and syscall-trace tests, plus a benchmark). Where no reference tool exists
+  to diff against, golden-output tests substitute for the differential requirement, and that
+  substitution MUST be noted in the tool.
+- **Not a dual build**: an extra is NOT a second build of a core tool and NOT a runtime
+  "extended mode" flag - both of which Principle VIII forbids because they double the test
+  surface and inflate size. Each extra is its own single binary. The core binaries are byte-for-
+  byte identical whether or not the extras exist.
+- **Scope discipline**: the extras collection is not a licence to chase GNU breadth. A tool
+  belongs here only when it is genuinely useful and cannot exist in the POSIX core; each addition
+  is reviewed on that bar.
 
 ## Platform & Architecture Scope
 
@@ -305,4 +349,4 @@ writing and either approved or corrected before merge.
 Compliance is reviewed on every change through the quality gates above. Complexity that
 violates a principle MUST be justified or removed.
 
-**Version**: 1.5.1 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-15
+**Version**: 1.6.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-16

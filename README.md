@@ -57,6 +57,32 @@ since POSIX options are the ones the two implementations agree on.
 A closed, grandfathered set of non-POSIX but BSD+GNU-universal extras predates this rule and
 stays: `seq` (and its `-s`/`-w`), `grep -w`, and `find -maxdepth`. Nothing further is added to it.
 
+## Extras: non-core tools
+
+A few tools are genuinely useful but simply are not POSIX (there is no standard utility for
+them at all). Rather than bend the core, they live in a separate **extras** collection under
+[`extras/`](extras/). They reuse the exact same `sys/` + `libuolt/` assembly infrastructure and
+obey every UOLT principle **except** POSIX-only — see the constitution's *UOLT Extras* section.
+Each is still hand-written x86_64 assembly, direct-syscall, zero-dependency, no-heap, size-
+targeted, and tested.
+
+| tool | size (Linux) | what it does |
+|------|--------------|--------------|
+| [`uolt-table`](extras/table/table.S) | **1816 B** | read whitespace-columned stdin and render it as a Unicode box-drawing table |
+
+```console
+$ ls -l | uolt-table
+┌────────────┬───┬────────┬──────┬─────┬─────┬───────┬───────────┐
+│ -rw-r--r-- │ 1 │ thomas │ staff │ 1.2K │ Jul │ 16 │ README.md │
+│ drwxr-xr-x │ 5 │ thomas │ staff │ 160  │ Jul │ 16 │ extras    │
+└────────────┴───┴────────┴──────┴─────┴─────┴───────┴───────────┘
+```
+
+Fields are split on runs of blanks (like `column -t`); column widths are measured in UTF-8 code
+points so accented text stays aligned. Input is streamed into a growable `mmap` region, so any
+input size renders without a fixed-buffer truncation. Limits (documented): wide/combining code
+points count as one column each, and a line may have at most 1024 fields.
+
 ## The whole suite at a glance
 
 <table>

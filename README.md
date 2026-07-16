@@ -60,6 +60,30 @@ stays: `seq` (and its `-s`/`-w`), `grep -w`, and `find -maxdepth`. Nothing furth
 Average Linux tool: **~1.3 KB**. The smallest (`true`) is **384 bytes**, of which the
 actual machine code is 21 bytes.
 
+## Install
+
+UOLT is **x86_64 only** for now (Linux and Intel macOS; arm64 is planned). Every tool
+installs as `uolt-<name>` (e.g. `uolt-cat`) so it never silently shadows your system
+coreutils.
+
+```sh
+# Nix (x86_64-linux)
+nix run github:thooams/uolt/v0.1.0
+
+# Homebrew tap (x86_64)
+brew install thooams/tap/uolt
+
+# Arch (AUR)
+yay -S uolt
+
+# From source (any supported target)
+git clone https://github.com/thooams/uolt && cd uolt && make
+```
+
+To use the tools as a reversible POSIX shadow on your `PATH`, `make install` symlinks the
+bare names into `$(PREFIX)/bin` (default `~/.local`); `make uninstall` removes them. See
+[`packaging/`](packaging/) for the tap/AUR/flake details.
+
 ## Build
 
 ```sh

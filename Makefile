@@ -270,22 +270,25 @@ bench: all
 # /usr/bin in PATH to activate, remove it to deactivate - fully reversible. Never
 # install into /usr/bin: these are POSIX subsets (no GNU flags) with documented
 # bounds (sort caps at 1 MB, ls unsorted, tail/pipe caps at 64 KB), so they are a
-# shadow for interactive/test use, not a system-wide coreutils replacement.
+# shadow for interactive/test use, not a system-wide coreutils replacement. The
+# extras (EXTRANAMES) are shadowed the same way under their bare name - note
+# `column` implements only the `-t` table mode, so shadowing bare `column`
+# replaces the default terminal-fill mode too.
 PREFIX ?= $(HOME)/.local
 install: all
 	@mkdir -p $(PREFIX)/bin
-	@for t in $(TOOLNAMES); do \
+	@for t in $(TOOLNAMES) $(EXTRANAMES); do \
 	  ln -sf $(abspath $(BUILD))/uolt-$$t $(PREFIX)/bin/$$t; \
 	  echo "  $(PREFIX)/bin/$$t -> uolt-$$t"; \
 	done
 	@ln -sf $(abspath $(BUILD))/uolt-test $(PREFIX)/bin/[
 	@echo "  $(PREFIX)/bin/[ -> uolt-test"
-	@echo "Installed $(words $(TOOLNAMES)) tools (+ the [ alias of test). Add to PATH: export PATH=\"$(PREFIX)/bin:$$PATH\""
+	@echo "Installed $(words $(TOOLNAMES)) core tools + $(words $(EXTRANAMES)) extras (+ the [ alias of test). Add to PATH: export PATH=\"$(PREFIX)/bin:$$PATH\""
 
 # Remove only the symlinks we own, and only if they still point at our binaries -
 # never delete a real file a user may have placed there.
 uninstall:
-	@for t in $(TOOLNAMES) '['; do \
+	@for t in $(TOOLNAMES) $(EXTRANAMES) '['; do \
 	  l=$(PREFIX)/bin/$$t; \
 	  case "$$t" in '[') tgt=uolt-test;; *) tgt=uolt-$$t;; esac; \
 	  if [ -L "$$l" ] && [ "$$(readlink "$$l")" = "$(abspath $(BUILD))/$$tgt" ]; then \

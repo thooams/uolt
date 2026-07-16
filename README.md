@@ -1,6 +1,14 @@
 # UOLT — Ultra Optimised Lightweight Toolset
 
 <p align="center">
+  <a href="https://github.com/thooams/uolt/releases/latest"><img src="https://img.shields.io/github/v/release/thooams/uolt?sort=semver" alt="release"></a>
+  <a href="https://aur.archlinux.org/packages/uolt"><img src="https://img.shields.io/aur/version/uolt?label=AUR" alt="AUR"></a>
+  <img src="https://img.shields.io/badge/brew-thooams%2Ftap%2Fuolt-informational" alt="Homebrew tap">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/thooams/uolt" alt="license"></a>
+  <img src="https://img.shields.io/badge/arch-x86__64-lightgrey" alt="x86_64">
+</p>
+
+<p align="center">
   <b>34 Unix command-line tools, hand-written in x86_64 assembly.</b><br>
   No libc · no heap · direct syscalls · fully static on Linux.
 </p>

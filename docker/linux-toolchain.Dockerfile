@@ -5,7 +5,7 @@ FROM ubuntu:24.04
 
 RUN apt-get update -qq \
     && apt-get install -y -qq --no-install-recommends \
-        clang binutils strace make coreutils hyperfine \
+        clang binutils strace make coreutils hyperfine bsdextrautils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /w

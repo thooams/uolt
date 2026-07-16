@@ -129,11 +129,11 @@ TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 # Extras section). They reuse the same sys/ + libuolt/ infrastructure but live
 # under extras/<name>/<name>.S and are kept out of the POSIX-only core so the
 # core stays a strict POSIX subset. Each still obeys every other principle.
-EXTRA_table    := libuolt/strlen.S libuolt/write.S libuolt/read.S \
+EXTRA_column   := libuolt/strlen.S libuolt/write.S libuolt/read.S \
                   libuolt/mmap.S libuolt/munmap.S \
                   $(SYSDIR)/write.S $(SYSDIR)/read.S \
                   $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
-EXTRANAMES := table
+EXTRANAMES := column
 EXTRABINS  := $(addprefix $(BUILD)/uolt-,$(EXTRANAMES))
 
 .PHONY: all test bench clean install uninstall
@@ -257,9 +257,10 @@ test: all
 	@sh tests/differential/tee.sh
 	@sh tests/unit/uniq.sh
 	@sh tests/differential/uniq.sh
-	@sh tests/unit/table.sh
-	@sh tests/fuzz/table.sh
-	@sh tests/trace/table.sh
+	@sh tests/unit/column.sh
+	@sh tests/differential/column.sh
+	@sh tests/fuzz/column.sh
+	@sh tests/trace/column.sh
 
 bench: all
 	@sh bench/run.sh

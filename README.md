@@ -59,41 +59,33 @@ stays: `seq` (and its `-s`/`-w`), `grep -w`, and `find -maxdepth`. Nothing furth
 
 ## Extras: non-core tools
 
-A few tools are genuinely useful but simply are not POSIX (there is no standard utility for
-them at all). Rather than bend the core, they live in a separate **extras** collection under
-[`extras/`](extras/). They reuse the exact same `sys/` + `libuolt/` assembly infrastructure and
-obey every UOLT principle **except** POSIX-only — see the constitution's *UOLT Extras* section.
-Each is still hand-written x86_64 assembly, direct-syscall, zero-dependency, no-heap, size-
-targeted, and tested.
+A few tools are genuinely useful but are not part of the POSIX core. Rather than bend the core,
+they live in a separate **extras** collection under [`extras/`](extras/). They reuse the exact
+same `sys/` + `libuolt/` assembly infrastructure and obey every UOLT principle **except**
+POSIX-only — see the constitution's *UOLT Extras* section. Each is still hand-written x86_64
+assembly, direct-syscall, zero-dependency, no-heap, size-targeted, and tested.
 
 | tool | size (Linux) | what it does |
 |------|--------------|--------------|
-| [`uolt-table`](extras/table/table.S) | **1816 B** | read whitespace-columned stdin and render it as a Unicode box-drawing table |
+| [`uolt-column`](extras/column/column.S) | **1552 B** | align whitespace-columned stdin into a padded table, like `column -t` |
 
 ```console
-$ ls -l | uolt-table
-┌────────────┬───┬────────┬──────┬─────┬─────┬───────┬───────────┐
-│ -rw-r--r-- │ 1 │ thomas │ staff │ 1.2K │ Jul │ 16 │ README.md │
-│ drwxr-xr-x │ 5 │ thomas │ staff │ 160  │ Jul │ 16 │ extras    │
-└────────────┴───┴────────┴──────┴─────┴─────┴───────┴───────────┘
+$ printf 'name size date\nfoo 1024 jul16\nbar 42 jul15\n' | uolt-column -t
+name  size  date
+foo   1024  jul16
+bar   42    jul15
 ```
 
-Fields are split on runs of blanks (like `column -t`); column widths are measured in UTF-8 code
-points so accented text stays aligned. Input is streamed into a growable `mmap` region, so any
-input size renders without a fixed-buffer truncation. Limits (documented): wide/combining code
-points count as one column each, and a line may have at most 1024 fields.
+Fields are split on runs of blanks; each is padded to the widest field in its column, columns
+are separated by two blanks, and the last field of each line is left unpadded — byte-for-byte
+identical to `column -t` on rectangular input (verified by a differential test against the system
+`column` on both Linux and macOS). Column widths are measured in UTF-8 code points, so accented
+text stays aligned. Input is streamed into a growable `mmap` region, so any input size aligns
+without a fixed-buffer truncation.
 
-Pass `-H` to treat the first row as a header, separated from the body by a `├───┼───┤` rule:
-
-```console
-$ printf 'name size\nfoo 1024\nbar 42\n' | uolt-table -H
-┌──────┬──────┐
-│ name │ size │
-├──────┼──────┤
-│ foo  │ 1024 │
-│ bar  │ 42   │
-└──────┴──────┘
-```
+Only the deterministic `-t` (table) mode is implemented — the default terminal-width "fill" mode
+of `column` is not reproducible and is out of scope. A `-t` argument is accepted so existing
+`column -t` invocations work unchanged; input is standard input only.
 
 ## The whole suite at a glance
 

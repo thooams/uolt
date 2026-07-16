@@ -5,7 +5,7 @@ Version change: 1.5.1 → 1.6.0
 Bump rationale: MINOR. Adds a new section, "UOLT Extras (Non-Core Collection)", and a pointer
   to it from Principle VIII. The core library stays a strict POSIX subset (Principle VIII is
   unchanged for it); the amendment sanctions a clearly separated `extras/` collection of
-  non-core, non-POSIX convenience tools (first member: `uolt-table`). Extras are exempt ONLY
+  non-core, non-POSIX convenience tools (first member: `uolt-column`). Extras are exempt ONLY
   from Principle VIII (POSIX-only) and still obey every other principle (assembly-only, direct
   syscalls, zero deps, no heap, thin syscall abstraction, size targets, readability,
   documentation, tested + benchmarked). This is not a second build of a core tool and not a
@@ -229,12 +229,12 @@ rather than merely small and fast.
 
 ## UOLT Extras (Non-Core Collection)
 
-The core toolset is POSIX-only (Principle VIII). Some genuinely useful tools are not POSIX at
-all (e.g. rendering piped output as a table). Rather than pollute the core or fork the project,
-these live in a clearly separated **extras** collection.
+The core toolset is POSIX-only (Principle VIII). Some genuinely useful tools are not part of the
+POSIX core (e.g. `column`, aligning piped output into a table). Rather than pollute the core or
+fork the project, these live in a clearly separated **extras** collection.
 
 - **Location & naming**: extra tools live under `extras/<name>/<name>.S` (the core lives under
-  `src/`), and still ship as `uolt-<name>` binaries (e.g. `uolt-table`). They reuse the exact
+  `src/`), and still ship as `uolt-<name>` binaries (e.g. `uolt-column`). They reuse the exact
   same shared infrastructure - `sys/<os>/`, `libuolt/`, `include/uolt.inc`, the entry shim, the
   Linux link script, and the single Makefile - so there is no second copy of anything and no
   drift.

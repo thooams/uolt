@@ -52,12 +52,11 @@ jobs:
         if: matrix.arch == 'x86_64'
         run: make
 
-      # US1 slice: prove the whole aarch64 chain (entry shim, syscall layer,
-      # internal API, one non-trivial body, build selection) end to end in CI.
-      # T057 (US3) broadens this to the full `make test`.
-      - name: Build (arm64 slice)
+      # The whole aarch64 toolset is cross-built here; the qemu-user test step below
+      # exercises every tool (US3 broadened this from the US1 true/false/echo slice).
+      - name: Build (arm64)
         if: matrix.arch == 'arm64'
-        run: make ARCH=arm64 build/uolt-true build/uolt-false build/uolt-echo
+        run: make ARCH=arm64
 
       - name: Report binary
         run: |
@@ -75,19 +74,26 @@ jobs:
         if: matrix.arch == 'x86_64'
         run: make test
 
-      # aarch64 binaries run via binfmt/qemu-user (direct exec). The trace layer is
-      # skipped: strace would observe the emulator, not the guest (research D8).
-      - name: Test (arm64 slice, qemu-user)
+      # aarch64 binaries run via binfmt/qemu-user (direct exec, so argv[0] and the
+      # `[` symlink name are preserved). The full suite runs; only the trace layer
+      # is skipped, because strace would observe the emulator, not the guest
+      # (research D8, T059). The no-heap guarantee stays structural: the link script
+      # discards .bss and every tool uses stack/mmap only.
+      - name: Test (arm64, qemu-user)
         if: matrix.arch == 'arm64'
         run: |
           set -e
-          for t in true false echo; do
-            for f in tests/unit/$t.sh tests/unit/${t}_repeat.sh tests/posix/$t.sh \
-                     tests/differential/$t.sh tests/fuzz/$t.sh; do
-              [ -f "$f" ] && sh "$f"
-            done
+          fails=0
+          for f in tests/*/*.sh; do
+            case "$f" in
+              tests/trace/*)
+                echo "SKIP ${f} (qemu-user: strace observes the emulator, not the guest)"
+                continue ;;
+            esac
+            if ! sh "$f"; then fails=$((fails + 1)); fi
           done
-          echo "trace layer skipped under qemu-user (strace observes the emulator; research D8, T059)"
+          echo "trace layer skipped under qemu-user (research D8, T059)"
+          [ "$fails" -eq 0 ]
 
       - name: Report Linux size target (< 1 KB)
         run: |

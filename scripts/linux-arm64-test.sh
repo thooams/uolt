@@ -44,7 +44,10 @@ docker run --rm --platform linux/amd64 -v "$ROOT":/w -w /w -e BUILD=build-arm64 
         name=$(basename "$b")
         [ "$name" = "run" ] && continue
         w="build-arm64/run/$name"
-        printf "#!/bin/sh\nexec qemu-aarch64-static /w/%s \"\$@\"\n" "$b" > "$w"
+        # Pass -0 "$0" so the invoking name (e.g. the `[` symlink for uolt-test)
+        # reaches the guest as argv[0], matching native binfmt behavior. Without
+        # it qemu forces argv[0] to the binary path and the `[` mode is undetected.
+        printf "#!/bin/sh\nexec qemu-aarch64-static -0 \"\$0\" /w/%s \"\$@\"\n" "$b" > "$w"
         chmod +x "$w"
         tool=$(printf "%s" "${name#uolt-}" | tr "[:lower:]-" "[:upper:]_")
         export "UOLT_$tool=/w/$w"

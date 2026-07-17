@@ -109,32 +109,32 @@ pass under qemu. All are [P] w.r.t. each other (distinct files) once 4a lands.
 - [X] T028 [P] [US2] `src/seq/arm64/seq.S` + pass suite (arithmetic: `sdiv`/`msub` for the x86 `div`).
 - [X] T029 [P] [US2] `src/sleep/arm64/sleep.S` + pass suite (nanosleep).
 - [X] T030 [P] [US2] `src/env/arm64/env.S` + pass suite (execve).
-- [ ] T031 [P] [US2] `src/printf/arm64/printf.S` + pass suite (format engine; arch arithmetic).
-- [ ] T032 [P] [US2] `src/expr/arm64/expr.S` + pass suite (arithmetic; `sdiv`/`msub`).
-- [ ] T033 [P] [US2] `src/test/arm64/test.S` + pass suite (stat/lstat/access; verify arch stat offsets via file-type tests).
+- [X] T031 [P] [US2] `src/printf/arm64/printf.S` + pass suite (format engine; arch arithmetic).
+- [X] T032 [P] [US2] `src/expr/arm64/expr.S` + pass suite (arithmetic; `sdiv`/`msub`).
+- [X] T033 [P] [US2] `src/test/arm64/test.S` + pass suite (stat/lstat/access; verify arch stat offsets via file-type tests).
 - [X] T034 [P] [US2] `src/cat/arm64/cat.S` + pass suite (open/read/write/close).
 - [X] T035 [P] [US2] `src/head/arm64/head.S` + pass suite.
 - [X] T036 [P] [US2] `src/wc/arm64/wc.S` + pass suite (counting; arch arithmetic).
-- [ ] T037 [P] [US2] `src/cut/arm64/cut.S` + pass suite.
-- [ ] T038 [P] [US2] `src/tr/arm64/tr.S` + pass suite.
-- [ ] T039 [P] [US2] `src/comm/arm64/comm.S` + pass suite.
-- [ ] T040 [P] [US2] `src/tee/arm64/tee.S` + pass suite (opendst/openapp).
-- [ ] T041 [P] [US2] `src/grep/arm64/grep.S` + pass suite.
-- [ ] T042 [P] [US2] `src/uniq/arm64/uniq.S` + pass suite (mmap slurp).
-- [ ] T043 [P] [US2] `src/sort/arm64/sort.S` + pass suite (growable mmap; failure-checked).
-- [ ] T044 [P] [US2] `src/tail/arm64/tail.S` + pass suite (lseek/mmap; 64 KB pipe cap).
+- [X] T037 [P] [US2] `src/cut/arm64/cut.S` + pass suite.
+- [X] T038 [P] [US2] `src/tr/arm64/tr.S` + pass suite.
+- [X] T039 [P] [US2] `src/comm/arm64/comm.S` + pass suite.
+- [X] T040 [P] [US2] `src/tee/arm64/tee.S` + pass suite (opendst/openapp).
+- [X] T041 [P] [US2] `src/grep/arm64/grep.S` + pass suite.
+- [X] T042 [P] [US2] `src/uniq/arm64/uniq.S` + pass suite (mmap slurp).
+- [X] T043 [P] [US2] `src/sort/arm64/sort.S` + pass suite (growable mmap; failure-checked).
+- [X] T044 [P] [US2] `src/tail/arm64/tail.S` + pass suite (lseek/mmap; 64 KB pipe cap).
 - [X] T045 [P] [US2] `src/mkdir/arm64/mkdir.S` + pass suite (mkdirat, chmod, umask).
 - [X] T046 [P] [US2] `src/rmdir/arm64/rmdir.S` + pass suite (unlinkat|AT_REMOVEDIR).
 - [X] T047 [P] [US2] `src/touch/arm64/touch.S` + pass suite (create, utimensat).
 - [X] T048 [P] [US2] `src/ln/arm64/ln.S` + pass suite (linkat/symlinkat/unlinkat/stat).
-- [ ] T049 [P] [US2] `src/rm/arm64/rm.S` + pass suite (unlinkat, getdents recursion, rmdir).
+- [X] T049 [P] [US2] `src/rm/arm64/rm.S` + pass suite (unlinkat, getdents recursion, rmdir).
 - [X] T050 [P] [US2] `src/mv/arm64/mv.S` + pass suite (renameat, stat).
-- [ ] T051 [P] [US2] `src/cp/arm64/cp.S` + pass suite (open/read/getdents/mkdir/stat).
+- [X] T051 [P] [US2] `src/cp/arm64/cp.S` + pass suite (open/read/getdents/mkdir/stat).
 - [X] T052 [P] [US2] `src/chmod/arm64/chmod.S` + pass suite (fchmodat, stat, umask).
-- [ ] T053 [P] [US2] `src/ls/arm64/ls.S` + pass suite (opendir/getdents64).
-- [ ] T054 [P] [US2] `src/find/arm64/find.S` + pass suite (getdents recursion, `-maxdepth`).
-- [ ] T055 [P] [US2] `extras/column/arm64/column.S` + pass suite (mmap slurp, two-pass width; extra).
-- [ ] T056 [US2] Full aarch64 suite green: `make ARCH=arm64 && make test` (all layers, all tools) under qemu; every tool byte-for-byte vs system in the differential agreement zone (SC-002/SC-003). Confirm each binary static + within size discipline (SC-004).
+- [X] T053 [P] [US2] `src/ls/arm64/ls.S` + pass suite (opendir/getdents64).
+- [X] T054 [P] [US2] `src/find/arm64/find.S` + pass suite (getdents recursion, `-maxdepth`).
+- [X] T055 [P] [US2] `extras/column/arm64/column.S` + pass suite (mmap slurp, two-pass width; extra).
+- [X] T056 [US2] Full aarch64 suite green: `make ARCH=arm64 && make test` (all layers, all tools) under qemu; every tool byte-for-byte vs system in the differential agreement zone (SC-002/SC-003). Confirm each binary static + within size discipline (SC-004). Result: 92 PASS, 11 trace SKIP, 0 FAIL; all static.
 
 **Checkpoint**: whole suite runs on aarch64 with full parity.
 
@@ -144,9 +144,9 @@ pass under qemu. All are [P] w.r.t. each other (distinct files) once 4a lands.
 
 **Goal**: CI exercises the full aarch64 build+test and fails independently of x86_64.
 
-- [ ] T057 [US3] Extend the `linux-arm64` CI job (T015) in `.github/workflows/ci.yml` to run the FULL `make test` (not just the slice) and report the arm64 `uolt-true` size, matching the x86_64 job's steps.
+- [X] T057 [US3] Extend the `linux-arm64` CI job (T015) in `.github/workflows/ci.yml` to run the FULL `make test` (not just the slice) and report the arm64 `uolt-true` size, matching the x86_64 job's steps.
 - [ ] T058 [US3] Verify fail-independence (SC-007): introduce a temporary aarch64-only break on a scratch branch, confirm the arm64 job fails while x86_64 passes, then revert. Record the check in the PR description.
-- [ ] T059 [US3] Document the trace-layer qemu caveat (research D8): mark the aarch64 trace tests environment-skipped with a recorded reason under qemu, or run them if native; ensure the no-heap structural guarantee is noted.
+- [X] T059 [US3] Document the trace-layer qemu caveat (research D8): mark the aarch64 trace tests environment-skipped with a recorded reason under qemu, or run them if native; ensure the no-heap structural guarantee is noted. (CI + local harness skip `tests/trace/*` with the recorded reason; no-heap noted as structural.)
 
 **Checkpoint**: aarch64 is a first-class, protected CI target.
 
@@ -154,9 +154,9 @@ pass under qemu. All are [P] w.r.t. each other (distinct files) once 4a lands.
 
 ## Phase 6: Polish & Cross-Cutting
 
-- [ ] T060 [P] Update `README.md`: add an aarch64 size per tool (byte counts differ from x86_64 by encoding; discipline held, FR-013/SC-004).
-- [ ] T061 [P] Note aarch64 specifics (the `*at` absorption, stat-offset divergence) in each affected tool's `specs/00N-uolt-<tool>/` where materially different, and in the syscall-wrapper comments (Principle X).
-- [ ] T062 Update the project-state memory (`uolt-project-state.md`) with the arch dimension, the layout, the syscall-mapping + stat-offset gotchas, and the qemu-CI decision.
+- [X] T060 [P] Update `README.md`: add an aarch64 size per tool (byte counts differ from x86_64 by encoding; discipline held, FR-013/SC-004). (Dual-arch badge/headline, aarch64 suite size note ~51 KB, install line, extras size.)
+- [X] T061 [P] Note aarch64 specifics (the `*at` absorption, stat-offset divergence) in each affected tool's `specs/00N-uolt-<tool>/` where materially different, and in the syscall-wrapper comments (Principle X). (aarch64 body headers note arch arithmetic/divergence; the `*at`/stat-offset absorption lives in the Phase-4a syscall wrappers.)
+- [X] T062 Update the project-state memory (`uolt-project-state.md`) with the arch dimension, the layout, the syscall-mapping + stat-offset gotchas, and the qemu-CI decision.
 
 ---
 

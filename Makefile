@@ -20,104 +20,139 @@ AS := clang
 BUILD ?= build
 export BUILD
 
-# Per-OS syscall directory and link recipe (constitution Principle III is
-# platform-aware: Linux fully static; macOS carries the OS-imposed libSystem
+# Architecture dimension. Detected from the host (overridable: `make ARCH=arm64`)
+# and normalized to the canonical spellings used by our source layout. Both the
+# libuolt primitives and the tool bodies are authored per-arch (instruction sets
+# are disjoint), so ARCH selects LIBDIR and the tool/extra source path; on Linux
+# the syscall numbers differ by arch too, so SYSDIR nests arch under the OS.
+# An unknown arch is a hard error (FR-012): we never silently build the wrong ISA.
+ARCH ?= $(shell uname -m)
+ifneq (,$(filter aarch64 arm64,$(ARCH)))
+  ARCH    := arm64
+  ARCHDEF := -DUOLT_ARCH_ARM64
+  TARGET  := aarch64-linux-gnu
+else ifneq (,$(filter x86_64 amd64,$(ARCH)))
+  ARCH    := x86_64
+  ARCHDEF := -DUOLT_ARCH_X86_64
+  TARGET  := x86_64-linux-gnu
+else
+  $(error Unsupported ARCH '$(ARCH)': expected one of aarch64/arm64 or x86_64/amd64)
+endif
+
+# Arch-only layers: libuolt primitives and (below) tool bodies live under <arch>/.
+LIBDIR := libuolt/$(ARCH)
+
+# Per-OS(-and-arch) syscall directory and link recipe (constitution Principle III
+# is platform-aware: Linux fully static; macOS carries the OS-imposed libSystem
 # loader stub, into which we make zero calls). $(1) = source .S files, $(2) =
 # output binary. clang assembles every .S and links in one step; -Iinclude lets
-# sources #include "uolt.inc".
+# sources #include "uolt.inc"; -DUOLT_ARCH_* selects the assembler dialect.
 ifeq ($(UNAME_S),Darwin)
+  # macOS syscall layer is not arch-split (only x86_64 macOS is in scope; macOS
+  # ARM stays deferred, see the constitution). libuolt is arch-split like Linux.
   SYSDIR := sys/macos
   OSDEF  := -DUOLT_OS_MACOS
   SDKLIB := $(shell xcrun --show-sdk-path)/usr/lib
   # macOS forbids fully static binaries; carry the OS-imposed libSystem loader
   # only (zero calls into it).
-  LINK    = $(AS) -nostdlib -e _start -Iinclude $(OSDEF) $(1) -L$(SDKLIB) -lSystem -o $(2)
+  LINK    = $(AS) -nostdlib -e _start -Iinclude $(OSDEF) $(ARCHDEF) $(1) -L$(SDKLIB) -lSystem -o $(2)
 else
-  SYSDIR := sys/linux
+  SYSDIR := sys/linux/$(ARCH)
   OSDEF  := -DUOLT_OS_LINUX
+  # Cross-linking to aarch64 from an x86_64 host needs lld (GNU ld in the image is
+  # single-target) and the aarch64 cross-strip (host strip cannot process aarch64
+  # ELF); the native x86_64 path keeps GNU ld + strip so its output stays
+  # byte-identical to the pre-arch build (SC-005).
+  ifeq ($(ARCH),arm64)
+    LDFLAGS := -fuse-ld=lld
+    STRIP   := aarch64-linux-gnu-strip
+  else
+    LDFLAGS :=
+    STRIP   := strip
+  endif
   # Fully static and size-first: a custom link script collapses everything into
   # one segment (see sys/linux/uolt.ld), no build-id, then strip all symbols and
   # section headers to approach the < 1 KB target.
-  LINK    = $(AS) -nostdlib -static -e _start -Iinclude $(OSDEF) \
-              -Wl,--build-id=none -Wl,-T,sys/linux/uolt.ld \
-              $(1) -o $(2) && strip -s $(2)
+  LINK    = $(AS) -target $(TARGET) -nostdlib -static -e _start -Iinclude $(OSDEF) $(ARCHDEF) \
+              $(LDFLAGS) -Wl,--build-id=none -Wl,-T,sys/linux/uolt.ld \
+              $(1) -o $(2) && $(STRIP) -s $(2)
 endif
 
 # Sources every tool needs: the per-OS entry shim, the exit API, and the exit
 # syscall wrapper.
-COMMON := $(SYSDIR)/start.S libuolt/exit.S $(SYSDIR)/exit.S
+COMMON := $(SYSDIR)/start.S $(LIBDIR)/exit.S $(SYSDIR)/exit.S
 
 # Per-tool extra sources (libuolt helpers + syscall wrappers a tool needs beyond
 # COMMON). Tools without an entry here just use COMMON.
-EXTRA_echo := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
-EXTRA_pwd  := libuolt/strlen.S libuolt/write.S libuolt/getcwd.S \
+EXTRA_echo := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(SYSDIR)/write.S
+EXTRA_pwd  := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/getcwd.S \
               $(SYSDIR)/write.S $(SYSDIR)/getcwd.S
-EXTRA_cat  := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
-              libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
+EXTRA_cat  := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/open.S \
+              $(LIBDIR)/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
               $(SYSDIR)/open.S $(SYSDIR)/close.S
-EXTRA_head := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
-              libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
+EXTRA_head := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/open.S \
+              $(LIBDIR)/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
               $(SYSDIR)/open.S $(SYSDIR)/close.S
-EXTRA_tail := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
-              libuolt/close.S libuolt/lseek.S libuolt/mmap.S libuolt/munmap.S \
+EXTRA_tail := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/open.S \
+              $(LIBDIR)/close.S $(LIBDIR)/lseek.S $(LIBDIR)/mmap.S $(LIBDIR)/munmap.S \
               $(SYSDIR)/write.S $(SYSDIR)/read.S \
               $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/lseek.S \
               $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
-EXTRA_wc   := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
-              libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
+EXTRA_wc   := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/open.S \
+              $(LIBDIR)/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S \
               $(SYSDIR)/open.S $(SYSDIR)/close.S
-EXTRA_yes  := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
-EXTRA_basename := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
-EXTRA_dirname  := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
-EXTRA_env      := libuolt/strlen.S libuolt/write.S libuolt/execve.S \
+EXTRA_yes  := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(SYSDIR)/write.S
+EXTRA_basename := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(SYSDIR)/write.S
+EXTRA_dirname  := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(SYSDIR)/write.S
+EXTRA_env      := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/execve.S \
                   $(SYSDIR)/write.S $(SYSDIR)/execve.S
-EXTRA_sleep    := libuolt/strlen.S libuolt/write.S libuolt/sleep.S \
+EXTRA_sleep    := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/sleep.S \
                   $(SYSDIR)/write.S $(SYSDIR)/sleep.S
-EXTRA_mkdir    := libuolt/strlen.S libuolt/write.S libuolt/mkdir.S libuolt/chmod.S \
+EXTRA_mkdir    := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/mkdir.S $(LIBDIR)/chmod.S \
                   $(SYSDIR)/write.S $(SYSDIR)/mkdir.S $(SYSDIR)/chmod.S
-EXTRA_rmdir    := libuolt/strlen.S libuolt/write.S libuolt/rmdir.S \
+EXTRA_rmdir    := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/rmdir.S \
                   $(SYSDIR)/write.S $(SYSDIR)/rmdir.S
-EXTRA_touch    := libuolt/strlen.S libuolt/write.S libuolt/close.S \
-                  libuolt/create.S libuolt/utimes.S $(SYSDIR)/write.S \
+EXTRA_touch    := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/close.S \
+                  $(LIBDIR)/create.S $(LIBDIR)/utimes.S $(SYSDIR)/write.S \
                   $(SYSDIR)/close.S $(SYSDIR)/create.S $(SYSDIR)/utimes.S
-EXTRA_ln       := libuolt/strlen.S libuolt/write.S libuolt/link.S \
-                  libuolt/symlink.S libuolt/unlink.S libuolt/statmode.S \
+EXTRA_ln       := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/link.S \
+                  $(LIBDIR)/symlink.S $(LIBDIR)/unlink.S $(LIBDIR)/statmode.S \
                   $(SYSDIR)/write.S \
                   $(SYSDIR)/link.S $(SYSDIR)/symlink.S $(SYSDIR)/unlink.S \
                   $(SYSDIR)/statmode.S
-EXTRA_rm       := libuolt/strlen.S libuolt/write.S libuolt/unlink.S \
-                  libuolt/opendir.S libuolt/getdents.S libuolt/close.S libuolt/rmdir.S \
+EXTRA_rm       := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/unlink.S \
+                  $(LIBDIR)/opendir.S $(LIBDIR)/getdents.S $(LIBDIR)/close.S $(LIBDIR)/rmdir.S \
                   $(SYSDIR)/write.S $(SYSDIR)/unlink.S $(SYSDIR)/opendir.S \
                   $(SYSDIR)/getdents.S $(SYSDIR)/close.S $(SYSDIR)/rmdir.S
-EXTRA_mv       := libuolt/strlen.S libuolt/write.S libuolt/rename.S libuolt/statmode.S \
+EXTRA_mv       := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/rename.S $(LIBDIR)/statmode.S \
                   $(SYSDIR)/write.S $(SYSDIR)/rename.S $(SYSDIR)/statmode.S
-EXTRA_cp       := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S \
-                  libuolt/close.S libuolt/opendst.S libuolt/opendir.S \
-                  libuolt/getdents.S libuolt/mkdir.S libuolt/statmode.S \
+EXTRA_cp       := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/open.S \
+                  $(LIBDIR)/close.S $(LIBDIR)/opendst.S $(LIBDIR)/opendir.S \
+                  $(LIBDIR)/getdents.S $(LIBDIR)/mkdir.S $(LIBDIR)/statmode.S \
                   $(SYSDIR)/write.S \
                   $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S \
                   $(SYSDIR)/opendst.S $(SYSDIR)/opendir.S $(SYSDIR)/getdents.S \
                   $(SYSDIR)/mkdir.S $(SYSDIR)/statmode.S
-EXTRA_chmod    := libuolt/strlen.S libuolt/write.S libuolt/chmod.S libuolt/statmode.S libuolt/umask.S \
+EXTRA_chmod    := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/chmod.S $(LIBDIR)/statmode.S $(LIBDIR)/umask.S \
                   $(SYSDIR)/write.S $(SYSDIR)/chmod.S $(SYSDIR)/statmode.S $(SYSDIR)/umask.S
-EXTRA_ls       := libuolt/strlen.S libuolt/write.S libuolt/opendir.S libuolt/close.S \
-                  libuolt/getdents.S $(SYSDIR)/write.S $(SYSDIR)/opendir.S \
+EXTRA_ls       := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/opendir.S $(LIBDIR)/close.S \
+                  $(LIBDIR)/getdents.S $(SYSDIR)/write.S $(SYSDIR)/opendir.S \
                   $(SYSDIR)/close.S $(SYSDIR)/getdents.S
-EXTRA_seq      := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
-EXTRA_grep     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
-EXTRA_find     := libuolt/strlen.S libuolt/write.S libuolt/opendir.S libuolt/close.S libuolt/getdents.S $(SYSDIR)/write.S $(SYSDIR)/opendir.S $(SYSDIR)/close.S $(SYSDIR)/getdents.S
-EXTRA_sort     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S libuolt/mmap.S libuolt/munmap.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
-EXTRA_tee      := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/close.S libuolt/opendst.S libuolt/openapp.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/close.S $(SYSDIR)/opendst.S $(SYSDIR)/openapp.S
-EXTRA_uniq     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S libuolt/mmap.S libuolt/munmap.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
-EXTRA_cut      := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
-EXTRA_tr       := libuolt/strlen.S libuolt/write.S libuolt/read.S $(SYSDIR)/write.S $(SYSDIR)/read.S
-EXTRA_comm     := libuolt/strlen.S libuolt/write.S libuolt/read.S libuolt/open.S libuolt/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
-EXTRA_printf   := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
-EXTRA_test     := libuolt/strlen.S libuolt/write.S libuolt/statmode.S libuolt/lstatmode.S \
-                  libuolt/statsize.S libuolt/access.S \
+EXTRA_seq      := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(SYSDIR)/write.S
+EXTRA_grep     := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/open.S $(LIBDIR)/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
+EXTRA_find     := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/opendir.S $(LIBDIR)/close.S $(LIBDIR)/getdents.S $(SYSDIR)/write.S $(SYSDIR)/opendir.S $(SYSDIR)/close.S $(SYSDIR)/getdents.S
+EXTRA_sort     := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/open.S $(LIBDIR)/close.S $(LIBDIR)/mmap.S $(LIBDIR)/munmap.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
+EXTRA_tee      := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/close.S $(LIBDIR)/opendst.S $(LIBDIR)/openapp.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/close.S $(SYSDIR)/opendst.S $(SYSDIR)/openapp.S
+EXTRA_uniq     := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/open.S $(LIBDIR)/close.S $(LIBDIR)/mmap.S $(LIBDIR)/munmap.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
+EXTRA_cut      := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/open.S $(LIBDIR)/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
+EXTRA_tr       := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(SYSDIR)/write.S $(SYSDIR)/read.S
+EXTRA_comm     := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S $(LIBDIR)/open.S $(LIBDIR)/close.S $(SYSDIR)/write.S $(SYSDIR)/read.S $(SYSDIR)/open.S $(SYSDIR)/close.S
+EXTRA_printf   := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(SYSDIR)/write.S
+EXTRA_test     := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/statmode.S $(LIBDIR)/lstatmode.S \
+                  $(LIBDIR)/statsize.S $(LIBDIR)/access.S \
                   $(SYSDIR)/write.S $(SYSDIR)/statmode.S $(SYSDIR)/lstatmode.S \
                   $(SYSDIR)/statsize.S $(SYSDIR)/access.S
-EXTRA_expr     := libuolt/strlen.S libuolt/write.S $(SYSDIR)/write.S
+EXTRA_expr     := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(SYSDIR)/write.S
 
 # Tool names; each maps to src/<name>/<name>.S and produces build/uolt-<name>.
 # Add a tool by creating that source, appending its name here, and (if needed) an
@@ -126,11 +161,11 @@ TOOLNAMES := true false echo pwd cat head tail wc yes basename dirname sleep mkd
 TOOLBINS  := $(addprefix $(BUILD)/uolt-,$(TOOLNAMES))
 
 # --- UOLT extras: non-core, non-POSIX convenience tools (see constitution's
-# Extras section). They reuse the same sys/ + libuolt/ infrastructure but live
+# Extras section). They reuse the same sys/ + $(LIBDIR)/ infrastructure but live
 # under extras/<name>/<name>.S and are kept out of the POSIX-only core so the
 # core stays a strict POSIX subset. Each still obeys every other principle.
-EXTRA_column   := libuolt/strlen.S libuolt/write.S libuolt/read.S \
-                  libuolt/mmap.S libuolt/munmap.S \
+EXTRA_column   := $(LIBDIR)/strlen.S $(LIBDIR)/write.S $(LIBDIR)/read.S \
+                  $(LIBDIR)/mmap.S $(LIBDIR)/munmap.S \
                   $(SYSDIR)/write.S $(SYSDIR)/read.S \
                   $(SYSDIR)/mmap.S $(SYSDIR)/munmap.S
 EXTRANAMES := column
@@ -142,15 +177,15 @@ all: $(TOOLBINS) $(EXTRABINS)
 # One explicit rule per tool (robust across make versions). Each links its own
 # source + COMMON + its EXTRA sources in a single clang invocation.
 define TOOL_RULE
-$(BUILD)/uolt-$(1): src/$(1)/$(1).S $$(COMMON) $$(EXTRA_$(1)) | $$(BUILD)
-	$$(call LINK,src/$(1)/$(1).S $$(COMMON) $$(EXTRA_$(1)),$$@)
+$(BUILD)/uolt-$(1): src/$(1)/$(ARCH)/$(1).S $$(COMMON) $$(EXTRA_$(1)) | $$(BUILD)
+	$$(call LINK,src/$(1)/$(ARCH)/$(1).S $$(COMMON) $$(EXTRA_$(1)),$$@)
 endef
 $(foreach t,$(TOOLNAMES),$(eval $(call TOOL_RULE,$(t))))
 
 # Same recipe for extras, but their source lives under extras/<name>/.
 define EXTRA_RULE
-$(BUILD)/uolt-$(1): extras/$(1)/$(1).S $$(COMMON) $$(EXTRA_$(1)) | $$(BUILD)
-	$$(call LINK,extras/$(1)/$(1).S $$(COMMON) $$(EXTRA_$(1)),$$@)
+$(BUILD)/uolt-$(1): extras/$(1)/$(ARCH)/$(1).S $$(COMMON) $$(EXTRA_$(1)) | $$(BUILD)
+	$$(call LINK,extras/$(1)/$(ARCH)/$(1).S $$(COMMON) $$(EXTRA_$(1)),$$@)
 endef
 $(foreach t,$(EXTRANAMES),$(eval $(call EXTRA_RULE,$(t))))
 

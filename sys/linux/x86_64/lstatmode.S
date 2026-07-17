@@ -4,6 +4,9 @@
 // st_mode is a u32 at offset 24 of struct stat. Owns the number + offset.
 #include "uolt.inc"
 .set SYS_LSTAT, 6
+// st_mode offset within struct stat is arch-specific (x86_64 layout: 24). See
+// statmode.S; the arm64 sibling defines 16 (research D3).
+.set ST_MODE_OFF, 24
 .text
 .globl sys_lstatmode
 sys_lstatmode:
@@ -13,7 +16,7 @@ sys_lstatmode:
     syscall
     test    rax, rax
     js      1f
-    mov     eax, dword ptr [rsp + 24]
+    mov     eax, dword ptr [rsp + ST_MODE_OFF]
 1:
     add     rsp, 160
     ret

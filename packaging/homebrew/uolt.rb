@@ -10,7 +10,7 @@ class Uolt < Formula
   desc "34 Unix tools in assembly (x86_64/aarch64): no libc, no heap, direct syscalls"
   homepage "https://github.com/thooams/uolt"
   url "https://github.com/thooams/uolt/archive/refs/tags/v0.2.0.tar.gz"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  sha256 "fd227a458be4dea888de824ffef4bcf1fbf68212702f52da73b84c047584724f"
   license "MIT"
 
   # Linux x86_64 and aarch64 are supported. The macOS port targets x86_64 only, so

@@ -1,6 +1,18 @@
 <!--
 Sync Impact Report
 ==================
+Version change: 1.6.0 → 1.7.0
+Bump rationale: MINOR. Moves Linux aarch64 (ARM64) from deferred to in-scope in "Platform &
+  Architecture Scope" and records the per-OS-and-arch source layout the port introduces
+  (`sys/linux/<arch>/`, `libuolt/<arch>/`, `src/<tool>/<arch>/`, `extras/<name>/<arch>/`, with
+  `<arch>` in {x86_64, arm64}). No principle is redefined: Principle V's thin syscall
+  abstraction is widened from per-OS to per-OS-and-arch (the aarch64 `*at`-family divergence is
+  absorbed in `sys/linux/arm64/` so internal-API signatures stay identical across arches);
+  Principle VI's size discipline is read per-architecture (byte counts differ by encoding, a
+  differing count is not a regression). macOS ARM (Apple Silicon) STAYS deferred: Apple's
+  restriction on direct syscalls keeps the Principle II tension unresolved for that target. No
+  existing rule is removed.
+
 Version change: 1.5.1 → 1.6.0
 Bump rationale: MINOR. Adds a new section, "UOLT Extras (Non-Core Collection)", and a pointer
   to it from Principle VIII. The core library stays a strict POSIX subset (Principle VIII is
@@ -257,26 +269,45 @@ fork the project, these live in a clearly separated **extras** collection.
 
 ## Platform & Architecture Scope
 
-- **Architecture**: x86_64 first and only, initially. ARM (including Apple Silicon / arm64
-  macOS) is deferred; do not target it now. Porting comes later and will add an `arch/arm64/`
-  path plus a resolution of the direct-syscall question below.
-- **Operating systems**: Linux and macOS, served through the thin per-OS syscall layer of
-  Principle V. All non-syscall logic is shared across OSes; a tool file (e.g. `ls.asm`) never
-  contains an OS-specific syscall number.
+- **Architecture**: Linux x86_64 and Linux aarch64 (ARM64) are both in-scope. macOS ARM
+  (Apple Silicon / arm64 macOS) is deferred; do not target it now (see the direct-syscall note
+  below). Architecture is a first-class directory dimension: instruction-level code (entry
+  shim, `libuolt/` primitives, tool bodies) is authored per-arch, and the syscall layer nests
+  arch under OS because the numbers differ by both.
+- **Operating systems**: Linux and macOS, served through the thin per-OS(-and-arch) syscall
+  layer of Principle V. All non-syscall logic is shared across OSes; the aarch64 vs x86_64
+  syscall-shape divergence (aarch64 drops legacy calls in favor of the `*at` family) is
+  absorbed inside `sys/linux/arm64/` so tool bodies and `libuolt/` keep identical internal-API
+  signatures across arches. A tool file (e.g. `ls.S`) never contains an OS- or arch-specific
+  syscall number.
 - **Toolchain**: one assembler across platforms - the clang integrated assembler (`as`),
   x86_64 sources written in Intel syntax via `.intel_syntax noprefix` (readability,
   Principle IX). This choice deliberately keeps a single toolchain that will also cover a
   future arm64 target (NASM would not, being x86-only).
 - **macOS direct-syscall note**: on x86_64 macOS, direct syscalls work and are the chosen
-  path. On future arm64 macOS, Apple restricts direct syscalls (they are expected to originate
-  from libSystem); reaching arm64 macOS will require re-deciding Principle II for that target
-  (accept fragile direct `svc`, or call libSystem's syscall stubs on that platform only). Not
-  in scope now; recorded so the tension is not forgotten.
-- **Layout example**:
+  path. On arm64 macOS, Apple restricts direct syscalls (they are expected to originate from
+  libSystem); reaching arm64 macOS would require re-deciding Principle II for that target
+  (accept fragile direct `svc`, or call libSystem's syscall stubs on that platform only). This
+  unresolved tension is why macOS ARM stays deferred while Linux aarch64 (where direct `svc #0`
+  is permitted) is in-scope. Recorded so the tension is not forgotten.
+- **Layout** (per-OS-and-arch; `<arch>` in {x86_64, arm64}): the syscall wrappers depend on
+  both OS and arch (numbers differ by both) so arch nests under OS; `libuolt/` primitives and
+  tool bodies depend on arch only (instructions), so arch nests directly:
   ```
   sys/
-      linux/  write.asm  read.asm  stat.asm
-      macos/  write.asm  read.asm  stat.asm
+      linux/  uolt.ld
+              x86_64/  start.S  write.S  exit.S  ...
+              arm64/   start.S  write.S  exit.S  ...   (*at family absorbed here)
+      macos/  x86_64/  ...
+  libuolt/
+      x86_64/  strlen.S  write.S  ...
+      arm64/   strlen.S  write.S  ...
+  src/<tool>/
+      x86_64/<tool>.S
+      arm64/<tool>.S
+  extras/<name>/
+      x86_64/<name>.S
+      arm64/<name>.S
   ```
 
 ## Size & Startup Targets
@@ -349,4 +380,4 @@ writing and either approved or corrected before merge.
 Compliance is reviewed on every change through the quality gates above. Complexity that
 violates a principle MUST be justified or removed.
 
-**Version**: 1.6.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-16
+**Version**: 1.7.0 | **Ratified**: 2026-07-12 | **Last Amended**: 2026-07-16

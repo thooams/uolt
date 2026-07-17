@@ -16,6 +16,12 @@ jobs:
         include:
           - name: linux-x86_64
             runner: ubuntu-latest
+            arch: x86_64
+          # aarch64 is cross-built on the x86_64 runner and run under qemu-user
+          # (binfmt), so it fails independently of the x86_64 job (SC-007).
+          - name: linux-arm64
+            runner: ubuntu-latest
+            arch: arm64
           # macOS x86_64 is tested locally, not in CI: GitHub's macOS runners are
           # billed at a ~10x minute multiplier. Re-enable when needed.
           # - name: macos-x86_64
@@ -24,40 +30,77 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install toolchain (Linux)
-        if: runner.os == 'Linux'
+      - name: Install toolchain (Linux x86_64)
+        if: matrix.arch == 'x86_64'
         run: |
           sudo apt-get update
           sudo apt-get install -y clang binutils strace coreutils bsdextrautils
+
+      - name: Install toolchain (Linux arm64 cross + qemu)
+        if: matrix.arch == 'arm64'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang lld binutils binutils-aarch64-linux-gnu \
+            qemu-user-static binfmt-support strace coreutils bsdextrautils
 
       - name: Show toolchain
         run: |
           uname -sm
           clang --version | head -1
 
-      - name: Build
+      - name: Build (x86_64)
+        if: matrix.arch == 'x86_64'
         run: make
+
+      # The whole aarch64 toolset is cross-built here; the qemu-user test step below
+      # exercises every tool (US3 broadened this from the US1 true/false/echo slice).
+      - name: Build (arm64)
+        if: matrix.arch == 'arm64'
+        run: make ARCH=arm64
 
       - name: Report binary
         run: |
           wc -c build/uolt-true
-          if [ "${{ runner.os }}" = "Linux" ]; then
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            aarch64-linux-gnu-readelf -h build/uolt-true | grep -E 'Class|Machine|Type'
+            aarch64-linux-gnu-readelf -d build/uolt-true 2>/dev/null | grep -q NEEDED \
+              && echo "DYNAMIC (unexpected)" || echo "static (no dynamic dependencies)"
+          else
             file build/uolt-true || true
             ldd build/uolt-true || echo "not a dynamic executable (static)"
-          else
-            otool -L build/uolt-true || true
           fi
 
-      - name: Test
+      - name: Test (x86_64)
+        if: matrix.arch == 'x86_64'
         run: make test
 
+      # aarch64 binaries run via binfmt/qemu-user (direct exec, so argv[0] and the
+      # `[` symlink name are preserved). The full suite runs; only the trace layer
+      # is skipped, because strace would observe the emulator, not the guest
+      # (research D8, T059). The no-heap guarantee stays structural: the link script
+      # discards .bss and every tool uses stack/mmap only.
+      - name: Test (arm64, qemu-user)
+        if: matrix.arch == 'arm64'
+        run: |
+          set -e
+          fails=0
+          for f in tests/*/*.sh; do
+            case "$f" in
+              tests/trace/*)
+                echo "SKIP ${f} (qemu-user: strace observes the emulator, not the guest)"
+                continue ;;
+            esac
+            if ! sh "$f"; then fails=$((fails + 1)); fi
+          done
+          echo "trace layer skipped under qemu-user (research D8, T059)"
+          [ "$fails" -eq 0 ]
+
       - name: Report Linux size target (< 1 KB)
-        if: runner.os == 'Linux'
         run: |
           size=$(wc -c < build/uolt-true)
-          echo "uolt-true size: ${size} bytes (target < 1024)"
+          echo "uolt-true (${{ matrix.arch }}) size: ${size} bytes (target < 1024)"
           if [ "$size" -ge 1024 ]; then
-            echo "::warning::uolt-true is ${size} bytes on Linux, above the 1 KB target; linker tuning needed"
+            echo "::warning::uolt-true is ${size} bytes on ${{ matrix.arch }}, above the 1 KB target; linker tuning needed"
           else
             echo "size target met"
           fi

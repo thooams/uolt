@@ -1,6 +1,11 @@
-# Build output (per-OS: ./build is the host default, build-linux is the container)
+# Build output (per-OS/arch: ./build is the host default; build-linux and
+# build-arm64 are the container x86_64/aarch64 outputs)
 build/
 build-linux/
+build-arm64/
+
+# Core dumps (e.g. from qemu-user under the flaky host binfmt handler)
+core
 
 # Object files / assembled artifacts
 *.o

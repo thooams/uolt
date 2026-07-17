@@ -4,8 +4,14 @@
 // OS-independent named constants (Principle IX: no magic numbers). Raw syscall
 // numbers do NOT live here - they belong in sys/<os>/ (Principle V).
 
-// Intel syntax, no % register prefixes, for readable `mov rax, SYS_EXIT`.
+// Assembler dialect is arch-specific and set here so every source is consistent.
+// x86_64 uses Intel syntax (no % register prefixes) for readable `mov rax, SYS_EXIT`.
+// AArch64 (arm64) has a single native mnemonic syntax, so no directive is needed
+// there; emitting `.intel_syntax` on that target would be meaningless/harmful. The
+// build passes -DUOLT_ARCH_X86_64 or -DUOLT_ARCH_ARM64 (see the Makefile).
+#ifdef UOLT_ARCH_X86_64
 .intel_syntax noprefix
+#endif
 
 // Process exit status codes (POSIX / shell convention).
 .set EXIT_SUCCESS, 0

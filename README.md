@@ -5,11 +5,11 @@
   <a href="https://aur.archlinux.org/packages/uolt"><img src="https://img.shields.io/aur/version/uolt?label=AUR" alt="AUR"></a>
   <img src="https://img.shields.io/badge/brew-thooams%2Ftap%2Fuolt-informational" alt="Homebrew tap">
   <a href="LICENSE"><img src="https://img.shields.io/github/license/thooams/uolt" alt="license"></a>
-  <img src="https://img.shields.io/badge/arch-x86__64-lightgrey" alt="x86_64">
+  <img src="https://img.shields.io/badge/arch-x86__64%20%7C%20arm64-lightgrey" alt="x86_64 | arm64">
 </p>
 
 <p align="center">
-  <b>34 Unix command-line tools, hand-written in x86_64 assembly.</b><br>
+  <b>34 Unix command-line tools, hand-written in assembly (x86_64 &amp; arm64).</b><br>
   No libc · no heap · direct syscalls · fully static on Linux.
 </p>
 
@@ -67,7 +67,7 @@ assembly, direct-syscall, zero-dependency, no-heap, size-targeted, and tested.
 
 | tool | size (Linux) | what it does |
 |------|--------------|--------------|
-| [`uolt-column`](extras/column/column.S) | **1552 B** | align whitespace-columned stdin into a padded table, like `column -t` |
+| [`uolt-column`](extras/column/x86_64/column.S) | **1552 B** (x86_64) / 1728 B (arm64) | align whitespace-columned stdin into a padded table, like `column -t` |
 
 ```console
 $ printf 'name size date\nfoo 1024 jul16\nbar 42 jul15\n' | uolt-column -t
@@ -98,9 +98,14 @@ of `column` is not reproducible and is out of scope. A `-t` argument is accepted
 Average Linux tool: **~1.3 KB**. The smallest (`true`) is **384 bytes**, of which the
 actual machine code is 21 bytes.
 
+The same 35 tools cross-build for **Linux aarch64 (arm64)**, fully static, and pass the
+full test suite under `qemu-user`. There the suite totals **~51 KB** (average ~1.5 KB;
+`true`/`false` are 368 bytes each): byte counts differ from x86_64 by instruction
+encoding, but the size discipline holds (FR-013/SC-004). Build it with `make ARCH=arm64`.
+
 ## Install
 
-UOLT is **x86_64 only** for now (Linux and Intel macOS; arm64 is planned). Every tool
+UOLT runs on **Linux x86_64**, **Linux aarch64 (arm64)**, and **Intel macOS**. Every tool
 installs as `uolt-<name>` (e.g. `uolt-cat`) so it never silently shadows your system
 coreutils.
 

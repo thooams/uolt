@@ -10,6 +10,7 @@
 #   make clean
 
 UNAME_S := $(shell uname -s)
+UNAME_M := $(shell uname -m)
 
 AS := clang
 
@@ -61,11 +62,18 @@ else
   OSDEF  := -DUOLT_OS_LINUX
   # Cross-linking to aarch64 from an x86_64 host needs lld (GNU ld in the image is
   # single-target) and the aarch64 cross-strip (host strip cannot process aarch64
-  # ELF); the native x86_64 path keeps GNU ld + strip so its output stays
-  # byte-identical to the pre-arch build (SC-005).
+  # ELF). A NATIVE aarch64 build (host uname -m already aarch64, e.g. an AUR/Nix
+  # aarch64 builder) uses the plain native ld + strip instead - the cross tools are
+  # not installed there. The native x86_64 path keeps GNU ld + strip so its output
+  # stays byte-identical to the pre-arch build (SC-005).
   ifeq ($(ARCH),arm64)
-    LDFLAGS := -fuse-ld=lld
-    STRIP   := aarch64-linux-gnu-strip
+    ifeq (,$(filter aarch64 arm64,$(UNAME_M)))
+      LDFLAGS := -fuse-ld=lld
+      STRIP   := aarch64-linux-gnu-strip
+    else
+      LDFLAGS :=
+      STRIP   := strip
+    endif
   else
     LDFLAGS :=
     STRIP   := strip

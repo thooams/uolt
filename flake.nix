@@ -1,13 +1,13 @@
 {
-  description = "UOLT - 34 Unix command-line tools hand-written in x86_64 assembly (no libc, no heap)";
+  description = "UOLT - 34 Unix command-line tools hand-written in assembly (x86_64 and aarch64; no libc, no heap)";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
   outputs = { self, nixpkgs }:
     let
-      # The sources are x86_64 assembly; arm64 (and a Nix darwin build, which
-      # needs the macOS SDK) are out of scope for now.
-      systems = [ "x86_64-linux" ];
+      # Linux x86_64 and aarch64 build natively (make auto-selects the arch from
+      # uname -m). A Nix darwin build needs the macOS SDK and stays out of scope.
+      systems = [ "x86_64-linux" "aarch64-linux" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
     in
     {
@@ -16,7 +16,7 @@
         in {
           default = pkgs.stdenv.mkDerivation {
             pname = "uolt";
-            version = "0.1.0";
+            version = "0.2.0";
             src = self;
 
             # The build is one clang integrated-assembler invocation per tool,
